@@ -9,6 +9,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const alertRoutes = require("./routes/alert.routes");
 const incidentRoutes = require("./routes/incident.routes");
 const telemetryRoutes = require("./routes/telemetry.routes");
+const usersRoutes = require("./routes/users.routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -69,6 +70,9 @@ app.use("/api/telemetry", telemetryRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);
+
+// USER MANAGEMENT ROUTES
+app.use("/api/users", usersRoutes);
 
 if (process.env.NODE_ENV === "production") {
     const dist = path.resolve(__dirname, "../../frontend/dist");
