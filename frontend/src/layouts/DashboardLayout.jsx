@@ -73,8 +73,8 @@ const navigation = [
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         window.location.assign("/login");
     };
 

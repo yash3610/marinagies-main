@@ -11,6 +11,16 @@ const incidentRoutes = require("./routes/incident.routes");
 const telemetryRoutes = require("./routes/telemetry.routes");
 
 const app = express();
+app.disable("x-powered-by");
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
+app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    next();
+});
 
 // CORS
 
@@ -23,8 +33,8 @@ app.use(
 
 // BODY PARSER
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "100kb", type: "application/json" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
 // HEALTH CHECK
 

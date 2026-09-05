@@ -29,10 +29,7 @@ export const AuthProvider = ({ children }) => {
                 email,
                 password,
             });
-
-            const { token, user } = response.data;
-
-            localStorage.setItem("marineaegis_token", token);
+            const { user } = response.data;
             localStorage.setItem(
                 "marineaegis_user",
                 JSON.stringify(user)
@@ -56,10 +53,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem("marineaegis_token");
-        localStorage.removeItem("marineaegis_user");
-        setUser(null);
+    const logout = async () => {
+        try {
+            await api.post("/auth/logout");
+        } finally {
+            localStorage.removeItem("marineaegis_user");
+            setUser(null);
+        }
     };
 
     return (

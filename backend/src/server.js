@@ -6,7 +6,10 @@ const { Server } = require("socket.io");
 const app = require("./app");
 const connectDB = require("./config/db");
 const Telemetry = require("./models/Telemetry");
+const User = require("./models/User");
 const { startTelemetrySimulator } = require("./services/telemetrySimulator");
+const { TOKEN_COOKIE } = require("./controllers/auth.controller");
+const { readCookie, verifySessionToken } = require("./middleware/auth.middleware");
 
 const PORT = process.env.PORT || 5000;
 
@@ -20,6 +23,20 @@ const io = new Server(server, {
         methods: ["GET", "POST"],
         credentials: true,
     },
+});
+
+// Socket.IO connections use the same signed HttpOnly session as the API.
+io.use(async (socket, next) => {
+    try {
+        const token = readCookie(socket.handshake.headers.cookie, TOKEN_COOKIE);
+        if (!token) return next(new Error("Authentication required"));
+        socket.user = verifySessionToken(token);
+        const user = await User.findById(socket.user.userId).select("active").lean();
+        if (!user?.active) return next(new Error("Authentication required"));
+        next();
+    } catch {
+        next(new Error("Invalid or expired session"));
+    }
 });
 
 // Socket.IO connection

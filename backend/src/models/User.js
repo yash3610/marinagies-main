@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
+            maxlength: 254,
             lowercase: true,
             trim: true,
         },
@@ -21,7 +22,8 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
             required: function () { return !this.passwordHash; },
-            minlength: 6,
+            minlength: 10,
+            select: false,
         },
 
         role: {
@@ -45,7 +47,6 @@ const userSchema = new mongoose.Schema(
     }
 );
 
-userSchema.index({ email: 1 });
 
 const User = mongoose.model("User", userSchema);
 

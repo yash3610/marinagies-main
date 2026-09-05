@@ -65,8 +65,7 @@ export default function PageLayout({ pageSlug, title, variant, children }) {
     if (button) button.disabled = true;
     try {
       const result = await postJson(request.endpoint, request.payload);
-      if (result.token && result.user) {
-        localStorage.setItem("marineaegis_token", result.token);
+      if (result.user && request.endpoint.startsWith("/auth/")) {
         localStorage.setItem("marineaegis_user", JSON.stringify(result.user));
         window.location.assign("/dashboard");
         return;
