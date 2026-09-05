@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import {
     Activity,
     Anchor,
@@ -71,12 +71,11 @@ const navigation = [
 ];
 
 const DashboardLayout = () => {
-    const navigate = useNavigate();
     const { user, logout } = useAuth();
 
     const handleLogout = () => {
         logout();
-        navigate("/login");
+        window.location.assign("/login");
     };
 
     return (

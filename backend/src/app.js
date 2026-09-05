@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("node:path");
+const formRoutes = require("./website/routes/formRoutes");
 
 const authRoutes = require("./routes/auth.routes");
 const vesselRoutes = require("./routes/vessel.routes");
@@ -54,6 +56,19 @@ app.use("/api/incidents", incidentRoutes);
 
 // TELEMETRY ROUTES
 app.use("/api/telemetry", telemetryRoutes);
+
+// Website forms share the existing database and backend.
+app.use("/api/forms", formRoutes);
+
+if (process.env.NODE_ENV === "production") {
+    const dist = path.resolve(__dirname, "../../frontend/dist");
+    app.use(express.static(dist));
+    app.get(["/dashboard", "/dashboard/{*path}"], (req, res) => res.sendFile(path.join(dist, "dashboard.html")));
+    app.get("/{*path}", (req, res, next) => {
+        if (req.path.startsWith("/api/") || path.extname(req.path)) return next();
+        res.sendFile(path.join(dist, "index.html"));
+    });
+}
 
 // 404 HANDLER
 

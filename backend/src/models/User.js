@@ -16,14 +16,17 @@ const userSchema = new mongoose.Schema(
             trim: true,
         },
 
+        passwordHash: { type: String, select: false },
+
         password: {
             type: String,
-            required: true,
+            required: function () { return !this.passwordHash; },
             minlength: 6,
         },
 
         role: {
             type: String,
+            default: "BRIDGE_OFFICER",
             required: true,
             enum: [
                 "ADMIN",

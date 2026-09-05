@@ -1,4 +1,9 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./pages";
+@source "./components";
+@source "./layouts";
+@source "./context";
+@source "./App.jsx";
 
 * {
   box-sizing: border-box;

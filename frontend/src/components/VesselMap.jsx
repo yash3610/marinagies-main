@@ -398,7 +398,7 @@ const VesselMap = () => {
             });
             return Array.from(byId.values());
         };
-        const socket = io("http://localhost:5000", { transports: ["websocket"] });
+        const socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, { transports: ["websocket"] });
         socket.on("telemetry:update", (payload) => {
             if (!mounted || !payload?.success || !Array.isArray(payload.data)) return;
             receivedLiveData = true;
