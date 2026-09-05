@@ -10,6 +10,7 @@ const alertRoutes = require("./routes/alert.routes");
 const incidentRoutes = require("./routes/incident.routes");
 const telemetryRoutes = require("./routes/telemetry.routes");
 const usersRoutes = require("./routes/users.routes");
+const auditLogRoutes = require("./routes/auditLog.routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -73,6 +74,9 @@ app.use("/api/forms", formRoutes);
 
 // USER MANAGEMENT ROUTES
 app.use("/api/users", usersRoutes);
+
+// AUDIT LOG ROUTES
+app.use("/api/audit-logs", auditLogRoutes);
 
 if (process.env.NODE_ENV === "production") {
     const dist = path.resolve(__dirname, "../../frontend/dist");

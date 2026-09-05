@@ -5,7 +5,15 @@ import DashboardHome from "./pages/DashboardHome";
 import FleetOverview from "./pages/FleetOverview";
 import NavigationMap from "./pages/NavigationMap";
 import RequireAuth from "./components/RequireAuth";
+import LiveMonitoring from "./pages/LiveMonitoring";
+import SOC from "./pages/SOC";
+import Alerts from "./pages/Alerts";
+import Incidents from "./pages/Incidents";
+import DigitalTwin from "./pages/DigitalTwin";
+import Reports from "./pages/Reports";
+import Devices from "./pages/Devices";
 import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -17,8 +25,16 @@ export default function App() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="fleet" element={<FleetOverview />} />
+        <Route path="monitoring" element={<LiveMonitoring />} />
         <Route path="navigation" element={<NavigationMap />} />
+        <Route path="soc" element={<SOC />} />
+        <Route path="alerts" element={<Alerts />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="digital-twin" element={<DigitalTwin />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="devices" element={<Devices />} />
         <Route path="users" element={<Users />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
     </Route>
     <Route path="*" element={<WebsiteRedirect />} />

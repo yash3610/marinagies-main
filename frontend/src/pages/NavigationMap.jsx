@@ -6,7 +6,7 @@ import {
     Popup,
     useMap,
 } from "react-leaflet";
-import { io } from "socket.io-client";
+import { createSocket } from "../services/socket";
 import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
@@ -327,12 +327,7 @@ const NavigationMap = () => {
     // ========================================
     useEffect(() => {
 
-        const socket = io(
-            import.meta.env.VITE_SOCKET_URL || (import.meta.env.DEV ? "http://localhost:5000" : window.location.origin),
-            {
-                transports: ["websocket"],
-            }
-        );
+        const socket = createSocket();
 
         socket.on("connect", () => {
 
