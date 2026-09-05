@@ -1,0 +1,34 @@
+{
+  "name": "marineaegis-backend",
+  "version": "1.0.0",
+  "description": "MarineAegis Maritime Cyber Defense Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed/seed.js",
+    "seed:vessels": "node src/seed/vessel.seed.js",
+    "seed:alerts": "node src/seed/alert.seed.js",
+    "seed:incidents": "node src/seed/incident.seed.js",
+    "seed:telemetry": "node src/seed/telemetry.seed.js"
+  },
+  "keywords": [
+    "maritime",
+    "cybersecurity",
+    "marine-aegis"
+  ],
+  "author": "MarineAegis",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.0",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
