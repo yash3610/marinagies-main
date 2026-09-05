@@ -328,7 +328,7 @@ const NavigationMap = () => {
     useEffect(() => {
 
         const socket = io(
-            import.meta.env.VITE_SOCKET_URL || window.location.origin,
+            import.meta.env.VITE_SOCKET_URL || (import.meta.env.DEV ? "http://localhost:5000" : window.location.origin),
             {
                 transports: ["websocket"],
             }
