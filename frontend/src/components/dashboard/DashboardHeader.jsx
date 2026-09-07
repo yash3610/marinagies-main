@@ -1,7 +1,7 @@
 import { Bell } from "lucide-react";
 
 const DashboardHeader = () => (
-    <header className="h-20 border-b border-slate-800 bg-[#07111f]/80 backdrop-blur-xl flex items-center justify-between px-7">
+    <header className="h-20 shrink-0 border-b border-slate-800 bg-[#07111f]/80 backdrop-blur-xl flex items-center justify-between px-7">
         <div>
             <h2 className="text-lg font-semibold text-white">Security Operations Center</h2>
             <p className="text-xs text-slate-500 mt-1">Autonomous Maritime Cyber Defense Platform</p>

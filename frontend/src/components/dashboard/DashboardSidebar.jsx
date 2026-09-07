@@ -45,7 +45,7 @@ const DashboardSidebar = () => {
     };
 
     return (
-        <aside className="w-64 shrink-0 border-r border-slate-800 bg-[#07111f] flex flex-col">
+        <aside className="w-64 h-screen shrink-0 border-r border-slate-800 bg-[#07111f] flex flex-col">
             <div className="h-20 px-5 border-b border-slate-800 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center">
                     <Anchor className="w-5 h-5 text-cyan-400" />
