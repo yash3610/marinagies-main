@@ -14,6 +14,7 @@ import Reports from "./pages/Reports";
 import Devices from "./pages/Devices";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import AuditLogs from "./pages/AuditLogs";
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="devices" element={<Devices />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="audit-logs" element={<AuditLogs />} />
       </Route>
     </Route>
     <Route path="*" element={<WebsiteRedirect />} />
