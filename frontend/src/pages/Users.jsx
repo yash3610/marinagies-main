@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
     Users as UsersIcon,
     UserPlus,
@@ -661,6 +662,56 @@ const UserRow = ({
     onToggle,
     onDelete,
 }) => {
+    const triggerRef = useRef(null);
+    const menuRef = useRef(null);
+    const isMenuOpen = menuUser === user._id;
+
+    useLayoutEffect(() => {
+        if (!isMenuOpen) return;
+
+        const trigger = triggerRef.current;
+        const menu = menuRef.current;
+        const rect = trigger.getBoundingClientRect();
+        const gap = 8;
+        const height = menu.offsetHeight;
+        const below = window.innerHeight - rect.bottom - gap * 2;
+        const above = rect.top - gap * 2;
+        const openAbove = below < height && above > below;
+        const availableHeight = Math.max(0, openAbove ? above : below);
+        menu.style.maxHeight = `${availableHeight}px`;
+        menu.style.top = `${openAbove
+            ? Math.max(gap, rect.top - Math.min(height, availableHeight) - gap)
+            : rect.bottom + gap}px`;
+        menu.style.left = `${Math.max(gap, Math.min(
+            rect.right - menu.offsetWidth,
+            window.innerWidth - menu.offsetWidth - gap,
+        ))}px`;
+
+        const close = () => setMenuUser(null);
+        const handlePointerDown = (event) => {
+            if (!menu.contains(event.target) && !trigger.contains(event.target)) close();
+        };
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                close();
+                trigger.focus();
+            }
+        };
+        const handleScroll = (event) => {
+            if (!menu.contains(event.target)) close();
+        };
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("scroll", handleScroll, true);
+        window.addEventListener("resize", close);
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("scroll", handleScroll, true);
+            window.removeEventListener("resize", close);
+        };
+    }, [isMenuOpen, setMenuUser]);
+
     return (
         <tr className="border-b border-slate-800/70 hover:bg-slate-800/20 transition">
 
@@ -720,6 +771,9 @@ const UserRow = ({
 
                     <button
                         type="button"
+                        ref={triggerRef}
+                        aria-label={`Actions for ${user.name}`}
+                        aria-expanded={isMenuOpen}
                         onClick={() =>
                             setMenuUser(
                                 menuUser === user._id
@@ -732,8 +786,8 @@ const UserRow = ({
                         <MoreVertical className="w-4 h-4" />
                     </button>
 
-                    {menuUser === user._id && (
-                        <div className="absolute right-0 top-10 z-50 w-44 rounded-lg border border-slate-700 bg-slate-950 shadow-2xl overflow-hidden">
+                    {isMenuOpen && createPortal(
+                        <div ref={menuRef} className="fixed z-50 w-44 max-w-[calc(100vw-16px)] rounded-lg border border-slate-700 bg-slate-950 shadow-2xl overflow-y-auto">
 
                             <button
                                 type="button"
@@ -778,7 +832,8 @@ const UserRow = ({
                                 <Trash2 className="w-3.5 h-3.5" />
                                 Delete User
                             </button>
-                        </div>
+                        </div>,
+                        document.body,
                     )}
                 </div>
             </td>

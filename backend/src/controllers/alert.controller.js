@@ -61,6 +61,8 @@ const createAlert = async (req, res) => {
             "name vesselId status riskScore riskLevel"
         );
 
+        req.app.get("io")?.emit("alert:new", populatedAlert);
+
         res.status(201).json({
             success: true,
             message: "Alert created successfully",
@@ -104,6 +106,8 @@ const updateAlert = async (req, res) => {
             "vessel",
             "name vesselId status riskScore riskLevel"
         );
+
+        req.app.get("io")?.emit("alert:update", updatedAlert);
 
         res.status(200).json({
             success: true,

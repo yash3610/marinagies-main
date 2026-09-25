@@ -25,6 +25,9 @@ const io = new Server(server, {
     },
 });
 
+// Make the socket server available to route controllers for live updates.
+app.set("io", io);
+
 // Socket.IO connections use the same signed HttpOnly session as the API.
 io.use(async (socket, next) => {
     try {
