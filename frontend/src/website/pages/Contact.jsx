@@ -42,7 +42,10 @@ export default function Contact() {
                 I've read &amp; agreed to <a href="/terms-conditions" className="text_primary link-hover-primary">Terms &amp; Conditions</a> &amp; <a href="/privacy-policy">Privacy Policy</a>
               </label>
             </div>
-            <button className="btn style-three d-block w-100 fw-semibold position-relative round-oval" type="submit">Send Message<span className="position-absolute top-0 end-0 h-100 d-flex flex-column align-items-center justify-content-center"><img src="/assets/img/icons/right-arrow-white.svg" alt="Icon" /></span></button>
+            <button className="btn style-three d-block w-100 fw-semibold position-relative round-oval" type="submit">
+              <strong className="submit-label fw-semibold">Send Message</strong>
+              <span className="position-absolute top-0 end-0 h-100 d-flex flex-column align-items-center justify-content-center"><img src="/assets/img/icons/right-arrow-white.svg" alt="Icon" /></span>
+            </button>
           </form>
         </div>
       </div>

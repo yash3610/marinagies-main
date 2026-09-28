@@ -62,7 +62,19 @@ export default function PageLayout({ pageSlug, title, variant, children }) {
     }
 
     const button = form.querySelector('button[type="submit"], button:not([type])');
-    if (button) button.disabled = true;
+    const isContactForm = request.endpoint === "/forms/contact";
+    form.dataset.submitting = "true";
+    form.setAttribute("aria-busy", "true");
+    if (button) {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    }
+    setStatus({
+      type: "info",
+      message: isContactForm
+        ? "Sending your message..."
+        : "Please wait while we process your request..."
+    });
     try {
       const result = await postJson(request.endpoint, request.payload);
       if (result.user && request.endpoint.startsWith("/auth/")) {
@@ -75,7 +87,12 @@ export default function PageLayout({ pageSlug, title, variant, children }) {
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     } finally {
-      if (button) button.disabled = false;
+      delete form.dataset.submitting;
+      form.removeAttribute("aria-busy");
+      if (button) {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+      }
     }
   }, [pageSlug]);
 
@@ -96,4 +113,3 @@ export default function PageLayout({ pageSlug, title, variant, children }) {
     </div>
   );
 }
-

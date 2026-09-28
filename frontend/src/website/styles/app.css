@@ -12,11 +12,27 @@
   background: #202020;
   border-radius: 10px;
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  animation: siteToastIn 0.25s ease-out;
 }
 
 .site-toast.success { background: #16794b; }
 .site-toast.error { background: #b42318; }
 .site-toast.info { background: #2454a6; }
+
+.site-toast > span {
+  flex: 1;
+}
+
+.site-toast-icon {
+  flex: 0 0 auto;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.site-toast.info .site-toast-icon {
+  animation: siteToastSpin 0.8s linear infinite;
+}
 
 .site-toast button {
   padding: 0;
@@ -500,6 +516,62 @@ button:disabled {
   }
 }
 
+@keyframes siteToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes siteToastSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.comment-form[data-submitting="true"] button[type="submit"] {
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.comment-form[data-submitting="true"] button[type="submit"] .submit-label,
+.comment-form[data-submitting="true"] button[type="submit"] > span {
+  visibility: hidden;
+}
+
+.comment-form[data-submitting="true"] button[type="submit"]::before {
+  content: "Sending Message...";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 22px;
+  color: #070b18;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.comment-form[data-submitting="true"] button[type="submit"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(50% - 82px);
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  margin-top: -8px;
+  border: 2px solid rgba(7, 11, 24, 0.25);
+  border-top-color: #070b18;
+  border-radius: 50%;
+  animation: siteToastSpin 0.7s linear infinite;
+}
+
 /* Uniform image and card sizing for the /projects grid. */
 .projects-fixed-grid .project-card.style-two {
   width: 304px;
@@ -540,4 +612,28 @@ button:disabled {
   line-height: 28px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* Clear accessible checkmark for login, register and contact consent fields. */
+.checkbox.style-two input:checked + label::before {
+  border: 1.5px solid var(--primaryColor);
+  background-color: transparent;
+  box-shadow: 0 0 0 3px rgba(100, 95, 255, 0.1);
+}
+
+.checkbox.style-two input:checked + label::after {
+  top: 6px;
+  left: 6px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--primaryColor);
+  border-width: 0 2px 2px 0;
+  border-radius: 0;
+  background: transparent;
+  transform: rotate(45deg);
+}
+
+.checkbox.style-two input:focus-visible + label::before {
+  outline: 2px solid rgba(100, 95, 255, 0.35);
+  outline-offset: 2px;
 }
