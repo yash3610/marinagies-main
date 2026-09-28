@@ -41,6 +41,18 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+
+        refreshTokenHash: {
+            type: String,
+            select: false,
+            default: null,
+        },
+
+        refreshTokenExpiresAt: {
+            type: Date,
+            select: false,
+            default: null,
+        },
     },
     {
         timestamps: true,

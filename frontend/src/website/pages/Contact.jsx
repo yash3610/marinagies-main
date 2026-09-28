@@ -22,22 +22,22 @@ export default function Contact() {
           <form action="#" className="comment-form style-one round-10" id="cmt-form">
             <h3 className="fs-20 fw-semibold mb-18"> Get In Touch</h3>
             <div className="form-group position-relative mb-20">
-              <input type="text" required className="w-100 ht-52 round-5 bg-white text-para border-0" placeholder="Name" />
+              <input name="name" type="text" required maxLength={100} className="w-100 ht-52 round-5 bg-white text-para border-0" placeholder="Name" />
             </div>
             <div className="form-group mb-20">
-              <input type="email" placeholder="Email" required className="w-100 ht-52 round-5 bg-white text-para border-0" />
+              <input name="email" type="email" placeholder="Email" required maxLength={254} className="w-100 ht-52 round-5 bg-white text-para border-0" />
             </div>
             <div className="form-group mb-20">
-              <input type="number" placeholder="Phone" required className="w-100 ht-52 round-5 bg-white text-para border-0" />
+              <input name="phone" type="tel" placeholder="Phone" required maxLength={30} className="w-100 ht-52 round-5 bg-white text-para border-0" />
             </div>
             <div className="form-group mb-20">
-              <input type="text" placeholder="Subject" required className="w-100 ht-52 round-5 bg-white text-para border-0" />
+              <input name="subject" type="text" placeholder="Subject" required maxLength={200} className="w-100 ht-52 round-5 bg-white text-para border-0" />
             </div>
             <div className="form-group mb-20">
-              <textarea name="messages" id="messages" cols={30} rows={10} placeholder="Comment" className="w-100 round-20 bg-white text-para border-0 resize-0" defaultValue={""} />
+              <textarea name="message" id="messages" cols={30} rows={10} required maxLength={5000} placeholder="Comment" className="w-100 round-20 bg-white text-para border-0 resize-0" defaultValue={""} />
             </div>
             <div className="form-check checkbox style-two mb-25">
-              <input className="form-check-input" type="checkbox" id="test_2" />
+              <input className="form-check-input" type="checkbox" id="test_2" required />
               <label className="form-check-label" htmlFor="test_2">
                 I've read &amp; agreed to <a href="/terms-conditions" className="text_primary link-hover-primary">Terms &amp; Conditions</a> &amp; <a href="/privacy-policy">Privacy Policy</a>
               </label>
@@ -101,4 +101,3 @@ export default function Contact() {
     </PageLayout>
   );
 }
-

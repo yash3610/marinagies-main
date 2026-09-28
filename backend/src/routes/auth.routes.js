@@ -4,6 +4,7 @@ const {
     login,
     register,
     getMe,
+    refresh,
     logout,
 } = require("../controllers/auth.controller");
 
@@ -19,6 +20,11 @@ const registerLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, key: (req) =
 // POST /api/auth/login
 router.post("/login", loginLimit, login);
 router.post("/register", registerLimit, register);
+router.post(
+    "/refresh",
+    rateLimit({ windowMs: 15 * 60 * 1000, max: 60 }),
+    refresh
+);
 router.post("/logout", logout);
 
 // GET /api/auth/me

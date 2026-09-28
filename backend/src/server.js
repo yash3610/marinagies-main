@@ -8,7 +8,7 @@ const connectDB = require("./config/db");
 const Telemetry = require("./models/Telemetry");
 const User = require("./models/User");
 const { startTelemetrySimulator } = require("./services/telemetrySimulator");
-const { TOKEN_COOKIE } = require("./controllers/auth.controller");
+const { ACCESS_TOKEN_COOKIE } = require("./controllers/auth.controller");
 const { readCookie, verifySessionToken } = require("./middleware/auth.middleware");
 
 const PORT = process.env.PORT || 5000;
@@ -31,7 +31,7 @@ app.set("io", io);
 // Socket.IO connections use the same signed HttpOnly session as the API.
 io.use(async (socket, next) => {
     try {
-        const token = readCookie(socket.handshake.headers.cookie, TOKEN_COOKIE);
+        const token = readCookie(socket.handshake.headers.cookie, ACCESS_TOKEN_COOKIE);
         if (!token) return next(new Error("Authentication required"));
         socket.user = verifySessionToken(token);
         const user = await User.findById(socket.user.userId).select("active").lean();

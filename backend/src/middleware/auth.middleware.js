@@ -1,10 +1,10 @@
 const jwt = require("jsonwebtoken");
-const { TOKEN_COOKIE, TOKEN_ISSUER, TOKEN_AUDIENCE } = require("../controllers/auth.controller");
-const readCookie = (header, name) => {
-    if (!header) return null;
-    const entry = header.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
-    return entry ? decodeURIComponent(entry.slice(name.length + 1)) : null;
-};
+const {
+    ACCESS_TOKEN_COOKIE,
+    TOKEN_ISSUER,
+    TOKEN_AUDIENCE,
+} = require("../controllers/auth.controller");
+const { readCookie } = require("../utils/cookies");
 const verifySessionToken = (token) => {
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error("Authentication is not configured");
@@ -16,7 +16,9 @@ const verifySessionToken = (token) => {
 const authenticate = (req, res, next) => {
     try {
         const bearer = req.headers.authorization?.match(/^Bearer\s+([^\s]+)$/i)?.[1];
-        const token = readCookie(req.headers.cookie, TOKEN_COOKIE) || bearer;
+        const token =
+            readCookie(req.headers.cookie, ACCESS_TOKEN_COOKIE) ||
+            bearer;
         if (!token) return res.status(401).json({ success: false, message: "Authentication required" });
         req.user = verifySessionToken(token);
         next();
