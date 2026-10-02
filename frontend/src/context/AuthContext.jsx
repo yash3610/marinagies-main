@@ -1,7 +1,6 @@
-import { createContext, useState } from "react";
+import { useCallback, useState } from "react";
 import api from "../services/api";
-
-export const AuthContext = createContext(null);
+import { AuthContext } from "./auth-context";
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
@@ -21,6 +20,25 @@ export const AuthProvider = ({ children }) => {
 
     const [loading, setLoading] = useState(false);
 
+    const storeUser = useCallback((nextUser) => {
+        if (nextUser) {
+            localStorage.setItem(
+                "marineaegis_user",
+                JSON.stringify(nextUser)
+            );
+        } else {
+            localStorage.removeItem("marineaegis_user");
+        }
+        setUser(nextUser);
+    }, []);
+
+    const refreshUser = useCallback(async () => {
+        const response = await api.get("/auth/me");
+        const nextUser = response.data?.user || null;
+        storeUser(nextUser);
+        return nextUser;
+    }, [storeUser]);
+
     const login = async (email, password) => {
         setLoading(true);
 
@@ -30,12 +48,7 @@ export const AuthProvider = ({ children }) => {
                 password,
             });
             const { user } = response.data;
-            localStorage.setItem(
-                "marineaegis_user",
-                JSON.stringify(user)
-            );
-
-            setUser(user);
+            storeUser(user);
 
             return {
                 success: true,
@@ -57,8 +70,7 @@ export const AuthProvider = ({ children }) => {
         try {
             await api.post("/auth/logout");
         } finally {
-            localStorage.removeItem("marineaegis_user");
-            setUser(null);
+            storeUser(null);
         }
     };
 
@@ -69,6 +81,9 @@ export const AuthProvider = ({ children }) => {
                 loading,
                 login,
                 logout,
+                refreshUser,
+                hasPermission: (permission) =>
+                    Boolean(user?.permissions?.includes(permission)),
             }}
         >
             {children}

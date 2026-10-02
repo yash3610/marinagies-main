@@ -25,6 +25,7 @@ const seedUsers = async () => {
                 password: hashedPassword,
                 role: "ADMIN",
                 active: true,
+                allVessels: true,
             },
 
             {
@@ -33,6 +34,7 @@ const seedUsers = async () => {
                 password: hashedPassword,
                 role: "SHORE_SECURITY_ANALYST",
                 active: true,
+                allVessels: true,
             },
 
             {
@@ -41,6 +43,7 @@ const seedUsers = async () => {
                 password: hashedPassword,
                 role: "BRIDGE_OFFICER",
                 active: true,
+                allVessels: true,
             },
         ];
 

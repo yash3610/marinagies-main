@@ -114,7 +114,6 @@ const vesselSchema = new mongoose.Schema(
     }
 );
 
-vesselSchema.index({ vesselId: 1 });
 vesselSchema.index({ status: 1 });
 vesselSchema.index({ riskLevel: 1 });
 

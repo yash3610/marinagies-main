@@ -1,9 +1,11 @@
 const Incident = require("../models/Incident");
+const { vesselScope, canAccessVessel } = require("../utils/dataScope");
+const { emitVesselEvent } = require("../services/realtime.service");
 
 // Get all incidents
 const getIncidents = async (req, res) => {
     try {
-        const incidents = await Incident.find()
+        const incidents = await Incident.find(vesselScope(req))
             .populate("vessel", "name vesselId status riskScore riskLevel")
             .populate("alert", "alertId type severity title status")
             .populate("assignedTo", "name email role")
@@ -27,7 +29,10 @@ const getIncidents = async (req, res) => {
 // Get single incident
 const getIncidentById = async (req, res) => {
     try {
-        const incident = await Incident.findById(req.params.id)
+        const incident = await Incident.findOne({
+            _id: req.params.id,
+            ...vesselScope(req),
+        })
             .populate("vessel", "name vesselId status riskScore riskLevel")
             .populate("alert", "alertId type severity title status")
             .populate("assignedTo", "name email role");
@@ -56,7 +61,11 @@ const getIncidentById = async (req, res) => {
 // Create incident
 const createIncident = async (req, res) => {
     try {
+        if (!canAccessVessel(req, req.body?.vessel)) {
+            return res.status(403).json({ success: false, message: "You do not have access to this vessel" });
+        }
         const incident = await Incident.create(req.body);
+        res.locals.auditResourceId = incident._id.toString();
 
         const populatedIncident = await Incident.findById(
             incident._id
@@ -64,6 +73,13 @@ const createIncident = async (req, res) => {
             .populate("vessel", "name vesselId status riskScore riskLevel")
             .populate("alert", "alertId type severity title status")
             .populate("assignedTo", "name email role");
+
+        emitVesselEvent(
+            req.app.get("io"),
+            "incident:new",
+            populatedIncident,
+            populatedIncident.vessel?._id || populatedIncident.vessel
+        );
 
         res.status(201).json({
             success: true,
@@ -83,7 +99,10 @@ const createIncident = async (req, res) => {
 // Update incident
 const updateIncident = async (req, res) => {
     try {
-        const incident = await Incident.findById(req.params.id);
+        const incident = await Incident.findOne({
+            _id: req.params.id,
+            ...vesselScope(req),
+        });
 
         if (!incident) {
             return res.status(404).json({
@@ -135,6 +154,13 @@ const updateIncident = async (req, res) => {
             .populate("vessel", "name vesselId status riskScore riskLevel")
             .populate("alert", "alertId type severity title status")
             .populate("assignedTo", "name email role");
+
+        emitVesselEvent(
+            req.app.get("io"),
+            "incident:update",
+            updatedIncident,
+            updatedIncident.vessel?._id || updatedIncident.vessel
+        );
 
         res.status(200).json({
             success: true,

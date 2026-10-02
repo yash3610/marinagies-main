@@ -1,9 +1,11 @@
 const Vessel = require("../models/Vessel");
+const User = require("../models/User");
+const { vesselScope } = require("../utils/dataScope");
 
 // Get all vessels
 const getVessels = async (req, res) => {
     try {
-        const vessels = await Vessel.find({ isActive: true })
+        const vessels = await Vessel.find({ isActive: true, ...vesselScope(req, "_id") })
             .sort({ createdAt: -1 })
             .lean();
 
@@ -25,7 +27,10 @@ const getVessels = async (req, res) => {
 // Get single vessel
 const getVesselById = async (req, res) => {
     try {
-        const vessel = await Vessel.findById(req.params.id).lean();
+        const vessel = await Vessel.findOne({
+            _id: req.params.id,
+            ...vesselScope(req, "_id"),
+        }).lean();
 
         if (!vessel) {
             return res.status(404).json({
@@ -52,6 +57,14 @@ const getVesselById = async (req, res) => {
 const createVessel = async (req, res) => {
     try {
         const vessel = await Vessel.create(req.body);
+        if (!req.user.allVessels) {
+            await User.updateOne(
+                { _id: req.user.userId },
+                { $addToSet: { vesselAccess: vessel._id } }
+            );
+        }
+        res.locals.auditVesselId = vessel._id.toString();
+        res.locals.auditResourceId = vessel._id.toString();
 
         res.status(201).json({
             success: true,
@@ -71,8 +84,8 @@ const createVessel = async (req, res) => {
 // Update vessel
 const updateVessel = async (req, res) => {
     try {
-        const vessel = await Vessel.findByIdAndUpdate(
-            req.params.id,
+        const vessel = await Vessel.findOneAndUpdate(
+            { _id: req.params.id, ...vesselScope(req, "_id") },
             req.body,
             {
                 new: true,
@@ -105,8 +118,8 @@ const updateVessel = async (req, res) => {
 // Delete vessel
 const deleteVessel = async (req, res) => {
     try {
-        const vessel = await Vessel.findByIdAndUpdate(
-            req.params.id,
+        const vessel = await Vessel.findOneAndUpdate(
+            { _id: req.params.id, ...vesselScope(req, "_id") },
             { isActive: false },
             { new: true }
         );

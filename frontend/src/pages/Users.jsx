@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
     Users as UsersIcon,
@@ -21,6 +21,7 @@ import api from "../services/api";
 
 const Users = () => {
     const [users, setUsers] = useState([]);
+    const [vessels, setVessels] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -39,20 +40,26 @@ const Users = () => {
         password: "",
         role: "BRIDGE_OFFICER",
         active: true,
+        allVessels: false,
+        vesselAccess: [],
     });
 
     /* ========================================================= */
     /* LOAD USERS */
     /* ========================================================= */
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
             setError("");
 
-            const response = await api.get("/users");
+            const [usersResponse, vesselsResponse] = await Promise.all([
+                api.get("/users"),
+                api.get("/vessels"),
+            ]);
 
-            setUsers(response.data?.users || []);
+            setUsers(usersResponse.data?.users || []);
+            setVessels(vesselsResponse.data?.vessels || []);
         } catch (err) {
             console.error("Users loading error:", err);
 
@@ -63,11 +70,12 @@ const Users = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        fetchUsers();
-    }, []);
+        const timer = window.setTimeout(fetchUsers, 0);
+        return () => window.clearTimeout(timer);
+    }, [fetchUsers]);
 
     /* ========================================================= */
     /* FILTER USERS */
@@ -139,6 +147,8 @@ const Users = () => {
             password: "",
             role: "BRIDGE_OFFICER",
             active: true,
+            allVessels: false,
+            vesselAccess: [],
         });
 
         setShowModal(true);
@@ -157,6 +167,10 @@ const Users = () => {
             password: "",
             role: user.role || "BRIDGE_OFFICER",
             active: user.active ?? true,
+            allVessels: user.allVessels ?? false,
+            vesselAccess: (user.vesselAccess || []).map((item) =>
+                typeof item === "string" ? item : item._id
+            ),
         });
 
         setMenuUser(null);
@@ -168,11 +182,16 @@ const Users = () => {
     /* ========================================================= */
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked, selectedOptions } = e.target;
+        const nextValue = name === "vesselAccess"
+            ? Array.from(selectedOptions || [], (option) => option.value)
+            : type === "checkbox"
+                ? checked
+                : value;
 
         setForm((current) => ({
             ...current,
-            [name]: value,
+            [name]: nextValue,
         }));
     };
 
@@ -192,6 +211,8 @@ const Users = () => {
                     email: form.email,
                     role: form.role,
                     active: form.active,
+                    allVessels: form.allVessels,
+                    vesselAccess: form.vesselAccess,
                 };
 
                 if (form.password.trim()) {
@@ -444,6 +465,11 @@ const Users = () => {
                                     value: "BRIDGE_OFFICER",
                                     label: "Bridge Officer",
                                 },
+                                { value: "BRIDGE_CREW", label: "Bridge Crew" },
+                                { value: "NETWORK_SECURITY", label: "Network Security" },
+                                { value: "ROC_OPERATOR", label: "ROC Operator" },
+                                { value: "FLEET_MANAGER", label: "Fleet Manager" },
+                                { value: "COMPLIANCE_AUDITOR", label: "Compliance Auditor" },
                             ]}
                         />
 
@@ -583,6 +609,7 @@ const Users = () => {
                 <UserModal
                     editingUser={editingUser}
                     form={form}
+                    vessels={vessels}
                     onChange={handleChange}
                     onClose={() =>
                         setShowModal(false)
@@ -864,6 +891,26 @@ const RoleBadge = ({ role }) => {
             className:
                 "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
         },
+        BRIDGE_CREW: {
+            label: "Bridge Crew",
+            className: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+        },
+        NETWORK_SECURITY: {
+            label: "Network Security",
+            className: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+        },
+        ROC_OPERATOR: {
+            label: "ROC Operator",
+            className: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+        },
+        FLEET_MANAGER: {
+            label: "Fleet Manager",
+            className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        },
+        COMPLIANCE_AUDITOR: {
+            label: "Compliance Auditor",
+            className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        },
     };
 
     const item =
@@ -946,6 +993,7 @@ const FilterSelect = ({
 const UserModal = ({
     editingUser,
     form,
+    vessels,
     onChange,
     onClose,
     onSubmit,
@@ -1036,11 +1084,11 @@ const UserModal = ({
                             value={form.password}
                             onChange={onChange}
                             required={!editingUser}
-                            minLength={6}
+                            minLength={10}
                             placeholder={
                                 editingUser
                                     ? "Leave blank to keep current password"
-                                    : "Minimum 6 characters"
+                                    : "Minimum 10 characters"
                             }
                             className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
                         />
@@ -1071,10 +1119,74 @@ const UserModal = ({
                                 <option value="BRIDGE_OFFICER">
                                     Bridge Officer
                                 </option>
+
+                                <option value="BRIDGE_CREW">
+                                    Bridge Crew
+                                </option>
+
+                                <option value="NETWORK_SECURITY">
+                                    Network Security
+                                </option>
+
+                                <option value="ROC_OPERATOR">
+                                    ROC Operator
+                                </option>
+
+                                <option value="FLEET_MANAGER">
+                                    Fleet Manager
+                                </option>
+
+                                <option value="COMPLIANCE_AUDITOR">
+                                    Compliance Auditor
+                                </option>
                             </select>
 
                             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
                         </div>
+                    </div>
+
+                    {/* VESSEL SCOPE */}
+
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+                        <label className="flex cursor-pointer items-center justify-between">
+                            <div>
+                                <p className="text-[10px] text-slate-300">All Vessel Access</p>
+                                <p className="mt-0.5 text-[9px] text-slate-600">
+                                    Allow this user to view every vessel in the fleet
+                                </p>
+                            </div>
+                            <input
+                                type="checkbox"
+                                name="allVessels"
+                                checked={form.allVessels}
+                                onChange={onChange}
+                                className="accent-cyan-400"
+                            />
+                        </label>
+
+                        {!form.allVessels && (
+                            <div className="mt-3 border-t border-slate-800 pt-3">
+                                <label className="mb-1.5 block text-[10px] text-slate-500">
+                                    Assigned Vessels
+                                </label>
+                                <select
+                                    multiple
+                                    name="vesselAccess"
+                                    value={form.vesselAccess}
+                                    onChange={onChange}
+                                    className="min-h-24 w-full rounded-lg border border-slate-800 bg-slate-950 p-2 text-xs text-slate-300 outline-none focus:border-cyan-500/50"
+                                >
+                                    {vessels.map((vessel) => (
+                                        <option key={vessel._id} value={vessel._id}>
+                                            {vessel.name} ({vessel.vesselId})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1.5 text-[9px] text-slate-600">
+                                    Hold Ctrl/Cmd to select multiple vessels.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* ACTIVE */}
@@ -1102,13 +1214,9 @@ const UserModal = ({
 
                         <input
                             type="checkbox"
+                            name="active"
                             checked={form.active}
-                            onChange={(e) =>
-                                setFormSafe(
-                                    e.target.checked,
-                                    onChange
-                                )
-                            }
+                            onChange={onChange}
                             className="accent-cyan-400"
                         />
                     </label>
@@ -1169,15 +1277,6 @@ const formatDate = (date) => {
         day: "2-digit",
         month: "short",
         year: "numeric",
-    });
-};
-
-const setFormSafe = (value, onChange) => {
-    onChange({
-        target: {
-            name: "active",
-            value,
-        },
     });
 };
 

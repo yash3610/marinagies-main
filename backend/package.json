@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "node --test tests/merged-app.test.js",
     "seed": "node src/seed/seed.js",
     "seed:vessels": "node src/seed/vessel.seed.js",
     "seed:alerts": "node src/seed/alert.seed.js",
     "seed:incidents": "node src/seed/incident.seed.js",
-    "seed:telemetry": "node src/seed/telemetry.seed.js"
+    "seed:telemetry": "node src/seed/telemetry.seed.js",
+    "migrate:audit-logs": "node src/scripts/migrateAuditLogs.js"
   },
   "keywords": [
     "maritime",

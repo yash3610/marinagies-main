@@ -5,6 +5,7 @@ import DashboardHome from "./pages/DashboardHome";
 import FleetOverview from "./pages/FleetOverview";
 import NavigationMap from "./pages/NavigationMap";
 import RequireAuth from "./components/RequireAuth";
+import RequirePermission from "./components/RequirePermission";
 import LiveMonitoring from "./pages/LiveMonitoring";
 import SOC from "./pages/SOC";
 import Alerts from "./pages/Alerts";
@@ -20,23 +21,28 @@ function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
   return null;
 }
+
+const permitted = (permission, page) => (
+  <RequirePermission permission={permission}>{page}</RequirePermission>
+);
+
 export default function App() {
   return <BrowserRouter><Routes>
     <Route element={<RequireAuth />}>
       <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardHome />} />
-        <Route path="fleet" element={<FleetOverview />} />
-        <Route path="monitoring" element={<LiveMonitoring />} />
-        <Route path="navigation" element={<NavigationMap />} />
-        <Route path="soc" element={<SOC />} />
-        <Route path="alerts" element={<Alerts />} />
-        <Route path="incidents" element={<Incidents />} />
-        <Route path="digital-twin" element={<DigitalTwin />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="devices" element={<Devices />} />
-        <Route path="users" element={<Users />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="audit-logs" element={<AuditLogs />} />
+        <Route index element={permitted("dashboard:view", <DashboardHome />)} />
+        <Route path="fleet" element={permitted("vessels:view", <FleetOverview />)} />
+        <Route path="monitoring" element={permitted("telemetry:view", <LiveMonitoring />)} />
+        <Route path="navigation" element={permitted("navigation:view", <NavigationMap />)} />
+        <Route path="soc" element={permitted("security-operations:view", <SOC />)} />
+        <Route path="alerts" element={permitted("alerts:view", <Alerts />)} />
+        <Route path="incidents" element={permitted("incidents:view", <Incidents />)} />
+        <Route path="digital-twin" element={permitted("digital-twin:view", <DigitalTwin />)} />
+        <Route path="reports" element={permitted("reports:view", <Reports />)} />
+        <Route path="devices" element={permitted("devices:view", <Devices />)} />
+        <Route path="users" element={permitted("users:manage", <Users />)} />
+        <Route path="settings" element={permitted("settings:view", <Settings />)} />
+        <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />
       </Route>
     </Route>
     <Route path="*" element={<WebsiteRedirect />} />

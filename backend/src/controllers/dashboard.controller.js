@@ -1,10 +1,13 @@
 const Vessel = require("../models/Vessel");
 const Alert = require("../models/Alert");
 const Incident = require("../models/Incident");
+const { vesselScope } = require("../utils/dataScope");
 
 const getDashboardStats = async (req, res) => {
     try {
-        const vessels = await Vessel.find({ isActive: true });
+        const vessels = await Vessel.find({ isActive: true, ...vesselScope(req, "_id") });
+        const vesselIds = vessels.map((vessel) => vessel._id);
+        const relatedVesselScope = { vessel: { $in: vesselIds } };
 
         // Vessel statistics
         const totalVessels = vessels.length;
@@ -64,10 +67,12 @@ const getDashboardStats = async (req, res) => {
 
         // Alert statistics
         const activeAlerts = await Alert.countDocuments({
+            ...relatedVesselScope,
             status: { $ne: "RESOLVED" },
         });
 
         const criticalAlerts = await Alert.countDocuments({
+            ...relatedVesselScope,
             severity: "CRITICAL",
             status: { $ne: "RESOLVED" },
         });
@@ -77,6 +82,7 @@ const getDashboardStats = async (req, res) => {
         startOfToday.setHours(0, 0, 0, 0);
 
         const incidentsToday = await Incident.countDocuments({
+            ...relatedVesselScope,
             detectedAt: {
                 $gte: startOfToday,
             },

@@ -3,6 +3,10 @@ const crypto = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { readCookie } = require("../utils/cookies");
+const {
+    normalizeRole,
+    getPermissionsForRole,
+} = require("../utils/accessControl");
 
 const ACCESS_TOKEN_COOKIE = "marineaegis_access";
 const REFRESH_TOKEN_COOKIE = "marineaegis_refresh";
@@ -11,7 +15,18 @@ const TOKEN_ISSUER = "marineaegis-api";
 const TOKEN_AUDIENCE = "marineaegis-dashboard";
 const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const publicUser = (user) => ({ id: user._id, name: user.name, email: user.email, role: user.role });
+const publicUser = (user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    normalizedRole: normalizeRole(user.role),
+    permissions: getPermissionsForRole(user.role),
+    vesselAccess: user.vesselAccess || [],
+    fleetAccess: user.fleetAccess || [],
+    allVessels: Boolean(user.allVessels || user.role === "ADMIN"),
+    mfaEnabled: Boolean(user.mfa?.enabled),
+});
 const cookieBaseOptions = () => ({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -52,6 +67,10 @@ const login = async (req, res) => {
         const passwordHash = user?.password || user?.passwordHash || "$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid";
         const passwordMatch = await bcrypt.compare(password, passwordHash).catch(() => false);
         if (!user || !passwordMatch || !user.active) return res.status(401).json({ success: false, message: "Invalid email or password" });
+        user.failedLoginAttempts = 0;
+        user.lockedUntil = null;
+        user.lastLoginAt = new Date();
+        res.locals.auditUser = { userId: user._id.toString(), role: user.role };
         return await createSession(res, user, 200, "Login successful");
     } catch (error) {
         console.error("Login error:", error.message);
@@ -70,6 +89,8 @@ const register = async (req, res) => {
         if (confirmPassword !== password) return res.status(400).json({ success: false, message: "Passwords do not match." });
         if (await User.exists({ email: normalizedEmail })) return res.status(409).json({ success: false, message: "Email is already registered." });
         const user = await User.create({ name: normalizedName, email: normalizedEmail, password: await bcrypt.hash(password, 12), role: "BRIDGE_OFFICER" });
+        res.locals.auditUser = { userId: user._id.toString(), role: user.role };
+        res.locals.auditResourceId = user._id.toString();
         return await createSession(res, user, 201, "Account created successfully.");
     } catch (error) {
         const duplicate = error.code === 11000;

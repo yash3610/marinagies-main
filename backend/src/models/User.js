@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ROLES } = require("../utils/accessControl");
 
 const userSchema = new mongoose.Schema(
     {
@@ -30,11 +31,44 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: "BRIDGE_OFFICER",
             required: true,
-            enum: [
-                "ADMIN",
-                "SHORE_SECURITY_ANALYST",
-                "BRIDGE_OFFICER",
-            ],
+            enum: Object.values(ROLES),
+        },
+
+        vesselAccess: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Vessel",
+        }],
+
+        fleetAccess: [{
+            type: String,
+            trim: true,
+        }],
+
+        allVessels: {
+            type: Boolean,
+            default: false,
+        },
+
+        mfa: {
+            enabled: { type: Boolean, default: false },
+            secret: { type: String, select: false, default: null },
+            verifiedAt: { type: Date, default: null },
+        },
+
+        failedLoginAttempts: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        lockedUntil: {
+            type: Date,
+            default: null,
+        },
+
+        lastLoginAt: {
+            type: Date,
+            default: null,
         },
 
         active: {
@@ -59,6 +93,8 @@ const userSchema = new mongoose.Schema(
     }
 );
 
+userSchema.index({ role: 1, active: 1 });
+userSchema.index({ vesselAccess: 1 });
 
 const User = mongoose.model("User", userSchema);
 

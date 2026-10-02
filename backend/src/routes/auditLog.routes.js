@@ -3,13 +3,14 @@ const express = require("express");
 const {
     getAuditLogs,
     getAuditLogById,
-    createAuditLog,
+    verifyAuditChain,
 } = require("../controllers/auditLog.controller");
 
 const {
     authenticate,
-    authorize,
+    authorizePermission,
 } = require("../middleware/auth.middleware");
+const { PERMISSIONS } = require("../utils/accessControl");
 
 const router = express.Router();
 
@@ -18,30 +19,20 @@ router.use(authenticate);
 // ADMIN + SECURITY ANALYST can view logs
 router.get(
     "/",
-    authorize(
-        "ADMIN",
-        "SHORE_SECURITY_ANALYST"
-    ),
+    authorizePermission(PERMISSIONS.AUDIT_LOGS_VIEW),
     getAuditLogs
 );
 
 router.get(
-    "/:id",
-    authorize(
-        "ADMIN",
-        "SHORE_SECURITY_ANALYST"
-    ),
-    getAuditLogById
+    "/verify-chain",
+    authorizePermission(PERMISSIONS.AUDIT_LOGS_VIEW),
+    verifyAuditChain
 );
 
-// Creating logs is internal/security action
-router.post(
-    "/",
-    authorize(
-        "ADMIN",
-        "SHORE_SECURITY_ANALYST"
-    ),
-    createAuditLog
+router.get(
+    "/:id",
+    authorizePermission(PERMISSIONS.AUDIT_LOGS_VIEW),
+    getAuditLogById
 );
 
 module.exports = router;

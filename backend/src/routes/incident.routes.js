@@ -9,22 +9,25 @@ const {
 
 const {
     authenticate,
-    authorize,
+    authorizePermission,
 } = require("../middleware/auth.middleware");
+const { PERMISSIONS } = require("../utils/accessControl");
+const { auditAction } = require("../middleware/audit.middleware");
 
 const router = express.Router();
 
 // Get all incidents
-router.get("/", authenticate, getIncidents);
+router.get("/", authenticate, authorizePermission(PERMISSIONS.INCIDENTS_VIEW), getIncidents);
 
 // Get single incident
-router.get("/:id", authenticate, getIncidentById);
+router.get("/:id", authenticate, authorizePermission(PERMISSIONS.INCIDENTS_VIEW), getIncidentById);
 
 // Create incident
 router.post(
     "/",
     authenticate,
-    authorize("ADMIN", "SHORE_SECURITY_ANALYST"),
+    authorizePermission(PERMISSIONS.INCIDENTS_MANAGE),
+    auditAction("INCIDENT_CREATE", "INCIDENT"),
     createIncident
 );
 
@@ -32,7 +35,8 @@ router.post(
 router.put(
     "/:id",
     authenticate,
-    authorize("ADMIN", "SHORE_SECURITY_ANALYST"),
+    authorizePermission(PERMISSIONS.INCIDENTS_MANAGE),
+    auditAction("INCIDENT_UPDATE", "INCIDENT"),
     updateIncident
 );
 

@@ -1,4 +1,5 @@
 const Telemetry = require("../models/Telemetry");
+const { emitTelemetry } = require("./realtime.service");
 
 const randomChange = (value, amount) => {
     return value + (Math.random() * 2 - 1) * amount;
@@ -100,11 +101,7 @@ const simulateTelemetry = async (io) => {
         // ================================
         // BROADCAST LIVE TELEMETRY
         // ================================
-        io.emit("telemetry:update", {
-            success: true,
-            data: updatedRecords,
-            timestamp: new Date().toISOString(),
-        });
+        emitTelemetry(io, updatedRecords);
 
         console.log(
             `Telemetry simulated and broadcasted: ${updatedRecords.length} vessels`

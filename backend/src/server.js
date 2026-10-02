@@ -10,6 +10,7 @@ const User = require("./models/User");
 const { startTelemetrySimulator } = require("./services/telemetrySimulator");
 const { ACCESS_TOKEN_COOKIE } = require("./controllers/auth.controller");
 const { readCookie, verifySessionToken } = require("./middleware/auth.middleware");
+const { vesselRoom } = require("./services/realtime.service");
 
 const PORT = process.env.PORT || 5000;
 
@@ -34,8 +35,16 @@ io.use(async (socket, next) => {
         const token = readCookie(socket.handshake.headers.cookie, ACCESS_TOKEN_COOKIE);
         if (!token) return next(new Error("Authentication required"));
         socket.user = verifySessionToken(token);
-        const user = await User.findById(socket.user.userId).select("active").lean();
+        const user = await User.findById(socket.user.userId)
+            .select("role active vesselAccess allVessels")
+            .lean();
         if (!user?.active) return next(new Error("Authentication required"));
+        socket.user = {
+            userId: user._id.toString(),
+            role: user.role,
+            vesselAccess: (user.vesselAccess || []).map(String),
+            allVessels: Boolean(user.allVessels || user.role === "ADMIN"),
+        };
         next();
     } catch {
         next(new Error("Invalid or expired session"));
@@ -47,7 +56,16 @@ io.on("connection", async (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     try {
-        const telemetryData = await Telemetry.find()
+        if (socket.user.allVessels) {
+            socket.join("fleet:all");
+        } else {
+            socket.user.vesselAccess.forEach((vesselId) => socket.join(vesselRoom(vesselId)));
+        }
+
+        const telemetryFilter = socket.user.allVessels
+            ? {}
+            : { vessel: { $in: socket.user.vesselAccess } };
+        const telemetryData = await Telemetry.find(telemetryFilter)
             .populate("vessel")
             .sort({ timestamp: -1 });
 

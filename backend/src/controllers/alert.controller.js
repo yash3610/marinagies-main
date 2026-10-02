@@ -1,9 +1,11 @@
 const Alert = require("../models/Alert");
+const { vesselScope, canAccessVessel } = require("../utils/dataScope");
+const { emitVesselEvent } = require("../services/realtime.service");
 
 // Get all alerts
 const getAlerts = async (req, res) => {
     try {
-        const alerts = await Alert.find()
+        const alerts = await Alert.find(vesselScope(req))
             .populate("vessel", "name vesselId status riskScore riskLevel")
             .sort({ detectedAt: -1 });
 
@@ -25,7 +27,10 @@ const getAlerts = async (req, res) => {
 // Get single alert
 const getAlertById = async (req, res) => {
     try {
-        const alert = await Alert.findById(req.params.id).populate(
+        const alert = await Alert.findOne({
+            _id: req.params.id,
+            ...vesselScope(req),
+        }).populate(
             "vessel",
             "name vesselId status riskScore riskLevel"
         );
@@ -54,14 +59,23 @@ const getAlertById = async (req, res) => {
 // Create alert
 const createAlert = async (req, res) => {
     try {
+        if (!canAccessVessel(req, req.body?.vessel)) {
+            return res.status(403).json({ success: false, message: "You do not have access to this vessel" });
+        }
         const alert = await Alert.create(req.body);
+        res.locals.auditResourceId = alert._id.toString();
 
         const populatedAlert = await Alert.findById(alert._id).populate(
             "vessel",
             "name vesselId status riskScore riskLevel"
         );
 
-        req.app.get("io")?.emit("alert:new", populatedAlert);
+        emitVesselEvent(
+            req.app.get("io"),
+            "alert:new",
+            populatedAlert,
+            populatedAlert.vessel?._id || populatedAlert.vessel
+        );
 
         res.status(201).json({
             success: true,
@@ -83,7 +97,10 @@ const updateAlert = async (req, res) => {
     try {
         const { status } = req.body;
 
-        const alert = await Alert.findById(req.params.id);
+        const alert = await Alert.findOne({
+            _id: req.params.id,
+            ...vesselScope(req),
+        });
 
         if (!alert) {
             return res.status(404).json({
@@ -107,7 +124,12 @@ const updateAlert = async (req, res) => {
             "name vesselId status riskScore riskLevel"
         );
 
-        req.app.get("io")?.emit("alert:update", updatedAlert);
+        emitVesselEvent(
+            req.app.get("io"),
+            "alert:update",
+            updatedAlert,
+            updatedAlert.vessel?._id || updatedAlert.vessel
+        );
 
         res.status(200).json({
             success: true,

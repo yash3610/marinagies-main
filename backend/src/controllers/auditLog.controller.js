@@ -1,4 +1,9 @@
 const AuditLog = require("../models/AuditLog");
+const {
+    writeAuditLog,
+    verifyAuditChain: verifyStoredAuditChain,
+} = require("../services/audit.service");
+const { getAccessibleVesselIds } = require("../utils/dataScope");
 
 // ========================================
 // GET AUDIT LOGS
@@ -14,6 +19,14 @@ const getAuditLogs = async (req, res) => {
         } = req.query;
 
         const filter = {};
+        const accessibleVessels = getAccessibleVesselIds(req);
+
+        if (accessibleVessels !== null) {
+            filter.$or = [
+                { vessel: { $in: accessibleVessels } },
+                { user: req.user.userId },
+            ];
+        }
 
         if (action) {
             filter.action = action;
@@ -62,8 +75,15 @@ const getAuditLogById = async (
     res
 ) => {
     try {
+        const accessibleVessels = getAccessibleVesselIds(req);
+        const scope = accessibleVessels === null ? {} : {
+            $or: [
+                { vessel: { $in: accessibleVessels } },
+                { user: req.user.userId },
+            ],
+        };
         const log =
-            await AuditLog.findById(req.params.id)
+            await AuditLog.findOne({ _id: req.params.id, ...scope })
                 .populate(
                     "user",
                     "name email role"
@@ -120,8 +140,10 @@ const createAuditLog = async (
         }
 
         const auditLog =
-            await AuditLog.create({
+            await writeAuditLog({
                 user: req.user?.userId || null,
+                actorRole: req.user?.role || null,
+                vessel: req.body.vessel || null,
                 action,
                 resource,
                 resourceId,
@@ -134,6 +156,8 @@ const createAuditLog = async (
                     "",
                 userAgent:
                     req.headers["user-agent"] || "",
+                requestId:
+                    req.headers["x-request-id"] || null,
             });
 
         const populatedLog =
@@ -163,8 +187,25 @@ const createAuditLog = async (
     }
 };
 
+const verifyAuditChain = async (req, res) => {
+    try {
+        const result = await verifyStoredAuditChain();
+        return res.status(result.valid ? 200 : 409).json({
+            success: result.valid,
+            ...result,
+        });
+    } catch (error) {
+        console.error("Verify audit chain error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to verify audit log chain",
+        });
+    }
+};
+
 module.exports = {
     getAuditLogs,
     getAuditLogById,
     createAuditLog,
+    verifyAuditChain,
 };

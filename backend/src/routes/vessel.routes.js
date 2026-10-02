@@ -10,22 +10,25 @@ const {
 
 const {
     authenticate,
-    authorize,
+    authorizePermission,
 } = require("../middleware/auth.middleware");
+const { PERMISSIONS } = require("../utils/accessControl");
+const { auditAction } = require("../middleware/audit.middleware");
 
 const router = express.Router();
 
 // Get all vessels
-router.get("/", authenticate, getVessels);
+router.get("/", authenticate, authorizePermission(PERMISSIONS.VESSELS_VIEW), getVessels);
 
 // Get single vessel
-router.get("/:id", authenticate, getVesselById);
+router.get("/:id", authenticate, authorizePermission(PERMISSIONS.VESSELS_VIEW), getVesselById);
 
 // Create vessel - ADMIN only
 router.post(
     "/",
     authenticate,
-    authorize("ADMIN"),
+    authorizePermission(PERMISSIONS.VESSELS_MANAGE),
+    auditAction("VESSEL_CREATE", "VESSEL"),
     createVessel
 );
 
@@ -33,7 +36,8 @@ router.post(
 router.put(
     "/:id",
     authenticate,
-    authorize("ADMIN"),
+    authorizePermission(PERMISSIONS.VESSELS_MANAGE),
+    auditAction("VESSEL_UPDATE", "VESSEL"),
     updateVessel
 );
 
@@ -41,7 +45,8 @@ router.put(
 router.delete(
     "/:id",
     authenticate,
-    authorize("ADMIN"),
+    authorizePermission(PERMISSIONS.VESSELS_MANAGE),
+    auditAction("VESSEL_DELETE", "VESSEL"),
     deleteVessel
 );
 

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Activity,
+    AlertTriangle,
     CheckCircle2,
     Clock3,
     FileText,
@@ -17,6 +17,8 @@ import api from "../services/api";
 const AuditLogs = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [verifying, setVerifying] = useState(false);
+    const [chainResult, setChainResult] = useState(null);
 
     const [search, setSearch] = useState("");
     const [actionFilter, setActionFilter] =
@@ -24,11 +26,7 @@ const AuditLogs = () => {
     const [statusFilter, setStatusFilter] =
         useState("ALL");
 
-    useEffect(() => {
-        loadLogs();
-    }, []);
-
-    const loadLogs = async () => {
+    const loadLogs = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -44,6 +42,26 @@ const AuditLogs = () => {
             );
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setTimeout(loadLogs, 0);
+        return () => window.clearTimeout(timer);
+    }, [loadLogs]);
+
+    const verifyChain = async () => {
+        try {
+            setVerifying(true);
+            const response = await api.get("/audit-logs/verify-chain");
+            setChainResult(response.data);
+        } catch (error) {
+            setChainResult(error.response?.data || {
+                valid: false,
+                message: "Unable to verify the audit chain",
+            });
+        } finally {
+            setVerifying(false);
         }
     };
 
@@ -138,17 +156,38 @@ const AuditLogs = () => {
                     </div>
                 </div>
 
-                <button
-                    onClick={loadLogs}
-                    className="flex items-center gap-2 self-start rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs text-slate-400 transition hover:border-slate-700 hover:text-white xl:self-auto"
-                >
-                    <RefreshCw
-                        className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""
-                            }`}
-                    />
-                    Refresh Logs
-                </button>
+                <div className="flex gap-2 self-start xl:self-auto">
+                    <button
+                        onClick={verifyChain}
+                        disabled={verifying}
+                        className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-xs text-emerald-400 transition hover:bg-emerald-400/10 disabled:opacity-50"
+                    >
+                        <ShieldCheck className={`h-3.5 w-3.5 ${verifying ? "animate-pulse" : ""}`} />
+                        Verify Chain
+                    </button>
+                    <button
+                        onClick={loadLogs}
+                        className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs text-slate-400 transition hover:border-slate-700 hover:text-white"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                        Refresh Logs
+                    </button>
+                </div>
             </div>
+
+            {chainResult && (
+                <div className={`flex items-center gap-3 rounded-xl border p-4 text-xs ${chainResult.valid
+                    ? "border-emerald-400/20 bg-emerald-400/5 text-emerald-300"
+                    : "border-red-400/20 bg-red-400/5 text-red-300"
+                }`}>
+                    {chainResult.valid
+                        ? <ShieldCheck className="h-4 w-4 shrink-0" />
+                        : <AlertTriangle className="h-4 w-4 shrink-0" />}
+                    {chainResult.valid
+                        ? `Audit chain verified: ${chainResult.checkedEntries} entries are intact.`
+                        : `Audit chain verification failed${chainResult.failedSequence ? ` at sequence ${chainResult.failedSequence}` : ""}.`}
+                </div>
+            )}
 
             {/* STATS */}
 

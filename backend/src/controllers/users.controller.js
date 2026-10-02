@@ -1,5 +1,14 @@
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const User = require("../models/User");
+const { ROLES } = require("../utils/accessControl");
+
+const allowedRoles = new Set(Object.values(ROLES));
+const normalizeVesselAccess = (value) => {
+    if (!Array.isArray(value)) return [];
+    const ids = [...new Set(value.map(String))];
+    return ids.every((id) => mongoose.isValidObjectId(id)) ? ids : null;
+};
 
 /* ========================================================= */
 /* GET ALL USERS */
@@ -68,6 +77,9 @@ const createUser = async (req, res) => {
             password,
             role,
             active = true,
+            allVessels = false,
+            vesselAccess = [],
+            fleetAccess = [],
         } = req.body;
 
         if (!name || !email || !password || !role) {
@@ -75,6 +87,20 @@ const createUser = async (req, res) => {
                 success: false,
                 message:
                     "Name, email, password and role are required",
+            });
+        }
+
+        const scopedVessels = normalizeVesselAccess(vesselAccess);
+        if (
+            !allowedRoles.has(role) ||
+            typeof password !== "string" ||
+            password.length < 10 ||
+            password.length > 128 ||
+            scopedVessels === null
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Role, password or vessel access is invalid",
             });
         }
 
@@ -102,10 +128,14 @@ const createUser = async (req, res) => {
             password: hashedPassword,
             role,
             active,
+            allVessels: Boolean(allVessels),
+            vesselAccess: scopedVessels,
+            fleetAccess: Array.isArray(fleetAccess) ? fleetAccess : [],
         });
 
         const safeUser = user.toObject();
         delete safeUser.password;
+        res.locals.auditResourceId = user._id.toString();
 
         res.status(201).json({
             success: true,
@@ -134,6 +164,9 @@ const updateUser = async (req, res) => {
             password,
             role,
             active,
+            allVessels,
+            vesselAccess,
+            fleetAccess,
         } = req.body;
 
         const user = await User.findById(
@@ -151,12 +184,14 @@ const updateUser = async (req, res) => {
 
         if (
             req.user.userId === user._id.toString() &&
-            active === false
+            (active === false ||
+                (role !== undefined && role !== user.role) ||
+                allVessels === false)
         ) {
             return res.status(400).json({
                 success: false,
                 message:
-                    "You cannot deactivate your own account",
+                    "You cannot deactivate, demote or restrict your own account",
             });
         }
 
@@ -192,6 +227,9 @@ const updateUser = async (req, res) => {
         /* ROLE */
 
         if (role !== undefined) {
+            if (!allowedRoles.has(role)) {
+                return res.status(400).json({ success: false, message: "Role is invalid" });
+            }
             user.role = role;
         }
 
@@ -201,12 +239,31 @@ const updateUser = async (req, res) => {
             user.active = active;
         }
 
+        if (allVessels !== undefined) {
+            user.allVessels = Boolean(allVessels);
+        }
+
+        if (vesselAccess !== undefined) {
+            const scopedVessels = normalizeVesselAccess(vesselAccess);
+            if (scopedVessels === null) {
+                return res.status(400).json({ success: false, message: "Vessel access is invalid" });
+            }
+            user.vesselAccess = scopedVessels;
+        }
+
+        if (fleetAccess !== undefined) {
+            user.fleetAccess = Array.isArray(fleetAccess) ? fleetAccess : [];
+        }
+
         /* PASSWORD */
 
         if (
             password !== undefined &&
             password.trim()
         ) {
+            if (password.length < 10 || password.length > 128) {
+                return res.status(400).json({ success: false, message: "Password must contain 10 to 128 characters" });
+            }
             user.password =
                 await bcrypt.hash(
                     password,

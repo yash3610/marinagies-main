@@ -13,21 +13,23 @@ import {
     Settings,
     ShieldAlert,
     Ship,
+    ScrollText,
     Users,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
 const operations = [
-    { label: "Overview", path: "/dashboard", icon: LayoutDashboard },
-    { label: "Fleet Overview", path: "/dashboard/fleet", icon: Ship },
-    { label: "Live Monitoring", path: "/dashboard/monitoring", icon: Activity },
-    { label: "Navigation Map", path: "/dashboard/navigation", icon: Map },
-    { label: "Security Operations", path: "/dashboard/soc", icon: Radar },
-    { label: "Alerts", path: "/dashboard/alerts", icon: Bell },
-    { label: "Incidents", path: "/dashboard/incidents", icon: ShieldAlert },
-    { label: "Digital Twin", path: "/dashboard/digital-twin", icon: Boxes },
-    { label: "Reports", path: "/dashboard/reports", icon: FileText },
-    { label: "Devices", path: "/dashboard/devices", icon: Gauge },
+    { label: "Overview", path: "/dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
+    { label: "Fleet Overview", path: "/dashboard/fleet", icon: Ship, permission: "vessels:view" },
+    { label: "Live Monitoring", path: "/dashboard/monitoring", icon: Activity, permission: "telemetry:view" },
+    { label: "Navigation Map", path: "/dashboard/navigation", icon: Map, permission: "navigation:view" },
+    { label: "Security Operations", path: "/dashboard/soc", icon: Radar, permission: "security-operations:view" },
+    { label: "Alerts", path: "/dashboard/alerts", icon: Bell, permission: "alerts:view" },
+    { label: "Incidents", path: "/dashboard/incidents", icon: ShieldAlert, permission: "incidents:view" },
+    { label: "Digital Twin", path: "/dashboard/digital-twin", icon: Boxes, permission: "digital-twin:view" },
+    { label: "Reports", path: "/dashboard/reports", icon: FileText, permission: "reports:view" },
+    { label: "Devices", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
+    { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 
 const linkClass = ({ isActive }) =>
@@ -37,7 +39,10 @@ const linkClass = ({ isActive }) =>
     }`;
 
 const DashboardSidebar = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, hasPermission } = useAuth();
+    const visibleOperations = operations.filter(({ permission }) =>
+        hasPermission(permission)
+    );
 
     const handleLogout = async () => {
         await logout();
@@ -60,7 +65,7 @@ const DashboardSidebar = () => {
 
             <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
                 <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Operations</p>
-                {operations.map(({ label, path, icon: Icon }) => (
+                {visibleOperations.map(({ label, path, icon: Icon }) => (
                     <NavLink key={path} to={path} end={path === "/dashboard"} className={linkClass}>
                         <Icon className="w-4 h-4" />
                         <span>{label}</span>
@@ -69,16 +74,18 @@ const DashboardSidebar = () => {
 
                 <div className="pt-5 mt-5 border-t border-slate-800">
                     <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">System</p>
-                    {user?.role === "ADMIN" && (
+                    {hasPermission("users:manage") && (
                         <NavLink to="/dashboard/users" className={linkClass}>
                             <Users className="w-4 h-4" />
                             Users
                         </NavLink>
                     )}
-                    <NavLink to="/dashboard/settings" className={linkClass}>
-                        <Settings className="w-4 h-4" />
-                        Settings
-                    </NavLink>
+                    {hasPermission("settings:view") && (
+                        <NavLink to="/dashboard/settings" className={linkClass}>
+                            <Settings className="w-4 h-4" />
+                            Settings
+                        </NavLink>
+                    )}
                 </div>
             </nav>
 

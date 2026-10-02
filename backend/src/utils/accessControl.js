@@ -1,0 +1,141 @@
+const ROLES = Object.freeze({
+    ADMIN: "ADMIN",
+    BRIDGE_CREW: "BRIDGE_CREW",
+    NETWORK_SECURITY: "NETWORK_SECURITY",
+    ROC_OPERATOR: "ROC_OPERATOR",
+    FLEET_MANAGER: "FLEET_MANAGER",
+    COMPLIANCE_AUDITOR: "COMPLIANCE_AUDITOR",
+
+    // Backward-compatible names used by existing seeded accounts.
+    BRIDGE_OFFICER: "BRIDGE_OFFICER",
+    SHORE_SECURITY_ANALYST: "SHORE_SECURITY_ANALYST",
+});
+
+const PERMISSIONS = Object.freeze({
+    DASHBOARD_VIEW: "dashboard:view",
+    VESSELS_VIEW: "vessels:view",
+    VESSELS_MANAGE: "vessels:manage",
+    TELEMETRY_VIEW: "telemetry:view",
+    TELEMETRY_INGEST: "telemetry:ingest",
+    NAVIGATION_VIEW: "navigation:view",
+    ALERTS_VIEW: "alerts:view",
+    ALERTS_MANAGE: "alerts:manage",
+    INCIDENTS_VIEW: "incidents:view",
+    INCIDENTS_MANAGE: "incidents:manage",
+    SECURITY_OPERATIONS_VIEW: "security-operations:view",
+    DEVICES_VIEW: "devices:view",
+    DEVICES_MANAGE: "devices:manage",
+    DEVICE_QUARANTINE: "devices:quarantine",
+    NETWORK_VIEW: "network:view",
+    NETWORK_MANAGE: "network:manage",
+    COMMANDS_VIEW: "commands:view",
+    COMMANDS_APPROVE: "commands:approve",
+    RECOVERY_VIEW: "recovery:view",
+    RECOVERY_EXECUTE: "recovery:execute",
+    DIGITAL_TWIN_VIEW: "digital-twin:view",
+    DIGITAL_TWIN_SIMULATE: "digital-twin:simulate",
+    FLEET_RISK_VIEW: "fleet-risk:view",
+    FLEET_RISK_MANAGE: "fleet-risk:manage",
+    REPORTS_VIEW: "reports:view",
+    REPORTS_EXPORT: "reports:export",
+    AUDIT_LOGS_VIEW: "audit-logs:view",
+    USERS_MANAGE: "users:manage",
+    SETTINGS_VIEW: "settings:view",
+});
+
+const ROLE_ALIASES = Object.freeze({
+    [ROLES.BRIDGE_OFFICER]: ROLES.BRIDGE_CREW,
+    [ROLES.SHORE_SECURITY_ANALYST]: ROLES.NETWORK_SECURITY,
+});
+
+const common = [
+    PERMISSIONS.DASHBOARD_VIEW,
+    PERMISSIONS.VESSELS_VIEW,
+    PERMISSIONS.TELEMETRY_VIEW,
+    PERMISSIONS.ALERTS_VIEW,
+    PERMISSIONS.INCIDENTS_VIEW,
+    PERMISSIONS.SETTINGS_VIEW,
+];
+
+const ROLE_PERMISSIONS = Object.freeze({
+    [ROLES.ADMIN]: Object.values(PERMISSIONS),
+    [ROLES.BRIDGE_CREW]: [
+        ...common,
+        PERMISSIONS.NAVIGATION_VIEW,
+        PERMISSIONS.DIGITAL_TWIN_VIEW,
+    ],
+    [ROLES.NETWORK_SECURITY]: [
+        ...common,
+        PERMISSIONS.SECURITY_OPERATIONS_VIEW,
+        PERMISSIONS.ALERTS_MANAGE,
+        PERMISSIONS.INCIDENTS_MANAGE,
+        PERMISSIONS.TELEMETRY_INGEST,
+        PERMISSIONS.DEVICES_VIEW,
+        PERMISSIONS.DEVICES_MANAGE,
+        PERMISSIONS.DEVICE_QUARANTINE,
+        PERMISSIONS.NETWORK_VIEW,
+        PERMISSIONS.NETWORK_MANAGE,
+        PERMISSIONS.RECOVERY_VIEW,
+        PERMISSIONS.RECOVERY_EXECUTE,
+        PERMISSIONS.DIGITAL_TWIN_VIEW,
+        PERMISSIONS.DIGITAL_TWIN_SIMULATE,
+        PERMISSIONS.REPORTS_VIEW,
+        PERMISSIONS.REPORTS_EXPORT,
+        PERMISSIONS.AUDIT_LOGS_VIEW,
+    ],
+    [ROLES.ROC_OPERATOR]: [
+        ...common,
+        PERMISSIONS.NAVIGATION_VIEW,
+        PERMISSIONS.COMMANDS_VIEW,
+        PERMISSIONS.COMMANDS_APPROVE,
+        PERMISSIONS.RECOVERY_VIEW,
+        PERMISSIONS.RECOVERY_EXECUTE,
+        PERMISSIONS.DIGITAL_TWIN_VIEW,
+        PERMISSIONS.DIGITAL_TWIN_SIMULATE,
+    ],
+    [ROLES.FLEET_MANAGER]: [
+        ...common,
+        PERMISSIONS.VESSELS_MANAGE,
+        PERMISSIONS.SECURITY_OPERATIONS_VIEW,
+        PERMISSIONS.ALERTS_MANAGE,
+        PERMISSIONS.INCIDENTS_MANAGE,
+        PERMISSIONS.DEVICES_VIEW,
+        PERMISSIONS.NETWORK_VIEW,
+        PERMISSIONS.COMMANDS_VIEW,
+        PERMISSIONS.RECOVERY_VIEW,
+        PERMISSIONS.DIGITAL_TWIN_VIEW,
+        PERMISSIONS.DIGITAL_TWIN_SIMULATE,
+        PERMISSIONS.FLEET_RISK_VIEW,
+        PERMISSIONS.FLEET_RISK_MANAGE,
+        PERMISSIONS.REPORTS_VIEW,
+        PERMISSIONS.REPORTS_EXPORT,
+        PERMISSIONS.AUDIT_LOGS_VIEW,
+    ],
+    [ROLES.COMPLIANCE_AUDITOR]: [
+        ...common,
+        PERMISSIONS.DEVICES_VIEW,
+        PERMISSIONS.COMMANDS_VIEW,
+        PERMISSIONS.RECOVERY_VIEW,
+        PERMISSIONS.FLEET_RISK_VIEW,
+        PERMISSIONS.REPORTS_VIEW,
+        PERMISSIONS.REPORTS_EXPORT,
+        PERMISSIONS.AUDIT_LOGS_VIEW,
+    ],
+});
+
+const normalizeRole = (role) => ROLE_ALIASES[role] || role;
+
+const getPermissionsForRole = (role) => [
+    ...(ROLE_PERMISSIONS[normalizeRole(role)] || []),
+];
+
+const hasPermission = (role, permission) =>
+    getPermissionsForRole(role).includes(permission);
+
+module.exports = {
+    ROLES,
+    PERMISSIONS,
+    normalizeRole,
+    getPermissionsForRole,
+    hasPermission,
+};

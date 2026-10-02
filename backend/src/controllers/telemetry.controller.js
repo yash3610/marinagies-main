@@ -1,10 +1,11 @@
 const Telemetry = require("../models/Telemetry");
 const Vessel = require("../models/Vessel");
+const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 
 // Get latest telemetry for all vessels
 const getLatestTelemetry = async (req, res) => {
     try {
-        const vessels = await Vessel.find({ isActive: true })
+        const vessels = await Vessel.find({ isActive: true, ...vesselScope(req, "_id") })
             .select("_id name vesselId")
             .lean();
 
@@ -45,7 +46,10 @@ const getVesselTelemetry = async (req, res) => {
     try {
         const { vesselId } = req.params;
 
-        const vessel = await Vessel.findById(vesselId)
+        const vessel = await Vessel.findOne({
+            _id: vesselId,
+            ...vesselScope(req, "_id"),
+        })
             .select("_id name vesselId")
             .lean();
 
@@ -95,6 +99,10 @@ const createTelemetry = async (req, res) => {
             engineTemperature,
             fuelLevel,
         } = req.body;
+
+        if (!canAccessVessel(req, vessel)) {
+            return res.status(403).json({ success: false, message: "You do not have access to this vessel" });
+        }
 
         const vesselExists = await Vessel.findById(vessel);
 

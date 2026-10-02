@@ -321,39 +321,38 @@ const DashboardHome = () => {
             {/* KPI CARDS */}
             {/* ===================================================== */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {cards.map((card) => {
                     const Icon = card.icon;
 
                     return (
                         <div
                             key={card.title}
-                            className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-4 hover:border-slate-700 transition"
+                            className="relative min-h-[104px] rounded-md border border-slate-800 bg-[#07111f] px-4 py-4 transition-colors duration-200 hover:border-slate-700 hover:bg-[#0a1728]"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-[11px] text-slate-500">
-                                        {card.title}
-                                    </p>
-
-                                    <p className="text-2xl font-semibold text-white mt-1">
-                                        {card.value}
-                                    </p>
-
-                                    <p
-                                        className={`text-[10px] mt-1 ${card.accent}`}
-                                    >
-                                        {card.subtitle}
-                                    </p>
-                                </div>
-
+                            <div className="absolute right-0 top-0 h-4 w-4 bg-[#020617]" />
+                            <div className="absolute -right-2 -top-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#020617]">
                                 <div
-                                    className={`w-11 h-11 rounded-full ${card.iconBg} flex items-center justify-center`}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full ${card.iconBg} shadow-[0_6px_16px_rgba(0,0,0,0.18)]`}
                                 >
                                     <Icon
                                         className={`w-5 h-5 ${card.iconColor}`}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="relative z-10 pr-12">
+                                <p className="text-[11px] text-slate-500">
+                                    {card.title}
+                                </p>
+
+                                <p className="mt-1 text-2xl font-semibold leading-none text-white">
+                                    {card.value}
+                                </p>
+
+                                <p className={`mt-2 text-[10px] ${card.accent}`}>
+                                    {card.subtitle}
+                                </p>
                             </div>
                         </div>
                     );
