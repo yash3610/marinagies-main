@@ -7,6 +7,7 @@ const SimulationSession = require("../models/SimulationSession");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
 const { recordTrustedPosition, proposeNavigationAction } = require("./navigationResponse.service");
+const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const KNOT_TO_METERS_PER_SECOND = 0.514444;
@@ -206,6 +207,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         detectedAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) },
     });
     let alert = recentAlert;
+    let createdAlert = false;
     if (!alert) {
         alert = await Alert.create({
             alertId: `GT-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
@@ -222,10 +224,12 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
             evidence: { signalsEvaluated: analysis.signalsEvaluated, anomalyScores: analysis.anomalyScores },
             detectionEvent: event._id,
         });
+        createdAlert = true;
         emitVesselEvent(io, "alert:new", alert, vessel._id);
     }
 
     let incident = null;
+    let createdIncident = false;
     if (severity === "CRITICAL") {
         incident = await Incident.findOne({
             vessel: vessel._id,
@@ -245,6 +249,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
                 source: telemetry.motion ? "ESP32" : "AI_ENGINE",
                 confidence,
             });
+            createdIncident = true;
             emitVesselEvent(io, "incident:new", incident, vessel._id);
         }
     }
@@ -252,6 +257,41 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
     event.alert = alert?._id || null;
     event.incident = incident?._id || null;
     await event.save();
+    if (incident && createdIncident) {
+        appendIncidentEventSafely({
+            incident: incident._id,
+            vessel: vessel._id,
+            eventType: "DETECTION",
+            title: "GhostTrace confirmed GPS spoofing",
+            description: analysis.explanation.whatCausedIt,
+            source: "GHOSTTRACE",
+            severity,
+            occurredAt: event.createdAt,
+            data: { detectionEvent: event._id, confidence, alertType: analysis.alertType },
+        });
+        if (createdAlert) appendIncidentEventSafely({
+            incident: incident._id,
+            vessel: vessel._id,
+            eventType: "ALERT_CREATED",
+            title: alert.title,
+            description: alert.message,
+            source: alert.source,
+            severity,
+            occurredAt: alert.detectedAt,
+            data: { alert: alert._id, alertId: alert.alertId },
+        });
+        appendIncidentEventSafely({
+            incident: incident._id,
+            vessel: vessel._id,
+            eventType: "INCIDENT_CREATED",
+            title: incident.title,
+            description: incident.description,
+            source: incident.source,
+            severity,
+            occurredAt: incident.detectedAt,
+            data: { incidentId: incident.incidentId },
+        });
+    }
     const simulationSession = await SimulationSession.findOneAndUpdate(
         { vessel: vessel._id },
         { $set: { hardware: { greenLed: false, redLed: true, buzzer: true } } },

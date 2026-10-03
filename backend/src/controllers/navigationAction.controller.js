@@ -9,6 +9,7 @@ const Incident = require("../models/Incident");
 const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { runDigitalTwin, recordTrustedPosition } = require("../services/navigationResponse.service");
 const { emitVesselEvent } = require("../services/realtime.service");
+const { appendIncidentEventSafely } = require("../services/incidentTimeline.service");
 
 const populateAction = (query) => query
     .populate("vessel", "name vesselId status riskScore riskLevel route destination")
@@ -88,6 +89,16 @@ const simulateAction = async (req, res) => {
             return res.status(409).json({ success: false, message: `Cannot simulate an action in ${action.status} state` });
         }
         await runDigitalTwin(action);
+        if (action.incident) appendIncidentEventSafely({
+            incident: action.incident,
+            vessel: action.vessel,
+            eventType: "DIGITAL_TWIN_RESULT",
+            title: `Digital Twin result: ${action.digitalTwin.result}`,
+            description: action.digitalTwin.summary,
+            source: "DIGITAL_TWIN",
+            occurredAt: action.digitalTwin.simulatedAt,
+            data: { action: action._id, actionId: action.actionId, checks: action.digitalTwin.checks },
+        });
         const responseAction = await populateAction(NavigationAction.findById(action._id)).lean();
         res.locals.auditVesselId = String(action.vessel);
         res.locals.auditResourceId = String(action._id);
@@ -148,6 +159,31 @@ const approveAction = async (req, res) => {
             reason: "Digital Twin SAFE correction approved and applied",
             telemetry: { ...trusted.toObject(), timestamp: decidedAt },
         });
+        if (action.incident) {
+            appendIncidentEventSafely({
+                incident: action.incident,
+                vessel: action.vessel,
+                eventType: "ACTION_APPROVED",
+                title: "Trusted-position correction approved",
+                description: action.decision.note,
+                source: "OPERATOR",
+                actor: req.user.userId,
+                actorRole: req.user.role,
+                occurredAt: decidedAt,
+                data: { action: action._id, actionId: action.actionId },
+            });
+            appendIncidentEventSafely({
+                incident: action.incident,
+                vessel: action.vessel,
+                eventType: "SAFE_MODE_ENTERED",
+                title: "Safe Mode entered",
+                description: "Suspicious GPS isolated; trusted position is active.",
+                source: "NAVIGATION_RESPONSE",
+                actor: req.user.userId,
+                actorRole: req.user.role,
+                occurredAt: decidedAt,
+            });
+        }
 
         const responseAction = await populateAction(NavigationAction.findById(action._id)).lean();
         res.locals.auditVesselId = String(action.vessel);
@@ -171,6 +207,18 @@ const rejectAction = async (req, res) => {
         action.status = "REJECTED";
         action.decision = { decidedBy: req.user.userId, decidedAt: new Date(), note: req.body.note || "Rejected by authorized operator" };
         await action.save();
+        if (action.incident) appendIncidentEventSafely({
+            incident: action.incident,
+            vessel: action.vessel,
+            eventType: "ACTION_REJECTED",
+            title: "Navigation action rejected",
+            description: action.decision.note,
+            source: "OPERATOR",
+            actor: req.user.userId,
+            actorRole: req.user.role,
+            occurredAt: action.decision.decidedAt,
+            data: { action: action._id, actionId: action.actionId },
+        });
         const responseAction = await populateAction(NavigationAction.findById(action._id)).lean();
         res.locals.auditVesselId = String(action.vessel);
         res.locals.auditResourceId = String(action._id);
@@ -195,6 +243,18 @@ const exitSafeMode = async (req, res) => {
         if (!session) return res.status(409).json({ success: false, message: "Safe Mode is not active" });
         await Vessel.updateOne({ _id: vesselId }, { $set: { status: "ONLINE", riskScore: 15, riskLevel: "LOW" } });
         await TrustedNavigationState.updateOne({ vessel: vesselId }, { $set: { locked: false } });
+        const latestAction = await NavigationAction.findOne({ vessel: vesselId, incident: { $ne: null } })
+            .sort({ appliedAt: -1, createdAt: -1 }).select("incident").lean();
+        if (latestAction?.incident) appendIncidentEventSafely({
+            incident: latestAction.incident,
+            vessel: vesselId,
+            eventType: "SAFE_MODE_EXITED",
+            title: "Safe Mode exited",
+            description: "GPS navigation source restored by an authorized operator.",
+            source: "OPERATOR",
+            actor: req.user.userId,
+            actorRole: req.user.role,
+        });
         res.locals.auditVesselId = vesselId;
         res.locals.auditResourceId = String(session._id);
         emitVesselEvent(req.app.get("io"), "simulation:update", session, vesselId);

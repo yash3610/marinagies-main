@@ -15,6 +15,8 @@ const { normalizeTelemetrySample } = require("../src/services/telemetry.service"
 const { isValidIngestionKey } = require("../src/middleware/telemetryIngestion.middleware");
 const { analyzeGhostTrace } = require("../src/services/ghostTrace.service");
 const { evaluateDigitalTwin } = require("../src/services/navigationResponse.service");
+const { createTextPdf } = require("../src/services/pdf.service");
+const { inferredTimeline } = require("../src/services/incidentReport.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -202,4 +204,22 @@ test("Digital Twin permits a recent bounded correction but blocks a stale truste
   const unsafe=evaluateDigitalTwin({...base,trustedPosition:{...base.trustedPosition,timestamp:new Date("2025-12-31T23:00:00Z")}},now);
   assert.equal(unsafe.result,"UNSAFE");
   assert.equal(unsafe.checks.trustedPositionFresh,false);
+});
+
+test("incident security report generator creates a real PDF document", () => {
+  const pdf=createTextPdf("MarineAegis Report",["Incident GTI-1","GPS spoofing detected"]);
+  assert.equal(pdf.subarray(0,8).toString("ascii"),"%PDF-1.4");
+  assert.match(pdf.toString("ascii"),/xref/);
+  assert.match(pdf.toString("ascii"),/%%EOF/);
+});
+
+test("legacy incident replay is reconstructed chronologically from stored evidence", () => {
+  const timeline=inferredTimeline({
+    incident:{description:"Investigation",source:"ESP32",severity:"CRITICAL",detectedAt:new Date("2026-01-01T00:00:03Z")},
+    alert:{title:"Spoof alert",message:"Mismatch",source:"ESP32",severity:"CRITICAL",detectedAt:new Date("2026-01-01T00:00:02Z")},
+    detection:{createdAt:new Date("2026-01-01T00:00:01Z"),confidenceScore:0.95,alertType:"GPS_POSITION_INCONSISTENT",explanation:{whatCausedIt:"AIS mismatch"}},
+    action:{createdAt:new Date("2026-01-01T00:00:04Z"),actionId:"NAV-1",status:"AWAITING_APPROVAL",digitalTwin:{result:"SAFE",summary:"Safe",simulatedAt:new Date("2026-01-01T00:00:04Z")}},
+  });
+  assert.deepEqual(timeline.map(event=>event.eventType),["DETECTION","ALERT_CREATED","INCIDENT_CREATED","DIGITAL_TWIN_RESULT"]);
+  assert.ok(timeline.every(event=>event.data.inferred));
 });

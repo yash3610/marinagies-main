@@ -6,8 +6,11 @@ import {
     CheckCircle2,
     ChevronDown,
     Clock3,
+    Download,
     Eye,
     Filter,
+    Pause,
+    Play,
     Search,
     ShieldAlert,
     Ship,
@@ -15,11 +18,12 @@ import {
     Target,
     UserRound,
     X,
-    Zap,
 } from "lucide-react";
 import api from "../services/api";
+import { useAuth } from "../hooks/useAuth";
 
 const Incidents = () => {
+    const { hasPermission } = useAuth();
     const [incidents, setIncidents] = useState([]);
     const [vessels, setVessels] = useState([]);
     const [users, setUsers] = useState([]);
@@ -95,7 +99,8 @@ const Incidents = () => {
     };
 
     useEffect(() => {
-        loadData();
+        const timer = window.setTimeout(loadData, 0);
+        return () => window.clearTimeout(timer);
     }, []);
 
     // ========================================
@@ -628,6 +633,7 @@ const Incidents = () => {
                     }
                     formatType={formatType}
                     formatDate={formatDate}
+                    canExport={hasPermission("reports:export")}
                 />
             )}
         </div>
@@ -885,6 +891,7 @@ const IncidentDetailsModal = ({
     onUpdate,
     formatType,
     formatDate,
+    canExport,
 }) => {
     const [status, setStatus] =
         useState(incident.status);
@@ -896,6 +903,12 @@ const IncidentDetailsModal = ({
         useState(
             incident.assignedTo?._id || ""
         );
+    const [replay, setReplay] = useState(null);
+    const [replayLoading, setReplayLoading] = useState(false);
+    const [replayError, setReplayError] = useState("");
+    const [activeEvent, setActiveEvent] = useState(0);
+    const [playing, setPlaying] = useState(false);
+    const [downloading, setDownloading] = useState("");
 
     const severity = getSeverityConfig(
         incident.severity
@@ -910,6 +923,58 @@ const IncidentDetailsModal = ({
         };
 
         onUpdate(payload);
+    };
+
+    useEffect(() => {
+        if (!playing || !replay?.timeline?.length) return undefined;
+        const timer = window.setInterval(() => {
+            setActiveEvent((current) => {
+                if (current >= replay.timeline.length - 1) {
+                    setPlaying(false);
+                    return current;
+                }
+                return current + 1;
+            });
+        }, 1200);
+        return () => window.clearInterval(timer);
+    }, [playing, replay]);
+
+    const loadReplay = async () => {
+        try {
+            setReplayLoading(true);
+            setReplayError("");
+            const response = await api.get(`/incidents/${incident._id}/replay`);
+            setReplay(response.data);
+            setActiveEvent(0);
+        } catch (error) {
+            setReplayError(error.response?.data?.message || "Failed to load incident replay");
+        } finally {
+            setReplayLoading(false);
+        }
+    };
+
+    const downloadReport = async (format) => {
+        try {
+            setDownloading(format);
+            setReplayError("");
+            const response = await api.get(`/incidents/${incident._id}/report.${format}`, {
+                responseType: "blob",
+            });
+            const url = window.URL.createObjectURL(response.data);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `MarineAegis-${incident.incidentId}-security-report.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            setReplayError(error.response?.status === 403
+                ? "Your role can view replay but cannot export reports."
+                : "Failed to download security report");
+        } finally {
+            setDownloading("");
+        }
     };
 
     return (
@@ -1205,11 +1270,115 @@ const IncidentDetailsModal = ({
                             />
                         </div>
                     </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <Clock3 className="h-4 w-4 text-cyan-400" />
+                                <div>
+                                    <p className="text-sm font-semibold text-white">Incident Replay</p>
+                                    <p className="text-[10px] text-slate-600">Evidence-backed event sequence</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={loadReplay}
+                                disabled={replayLoading}
+                                className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-semibold text-cyan-400 disabled:opacity-50"
+                            >
+                                {replayLoading ? "Loading..." : replay ? "Refresh Replay" : "Load Replay"}
+                            </button>
+                        </div>
+
+                        {replayError && (
+                            <p className="mt-3 rounded-lg border border-red-400/20 bg-red-400/5 px-3 py-2 text-xs text-red-300">
+                                {replayError}
+                            </p>
+                        )}
+
+                        {replay?.timeline?.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                        Event {activeEvent + 1} of {replay.timeline.length}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveEvent((value) => Math.max(0, value - 1))}
+                                            className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-400"
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPlaying((value) => !value)}
+                                            className="flex items-center gap-1 rounded border border-cyan-400/20 px-2 py-1 text-[10px] text-cyan-400"
+                                        >
+                                            {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                                            {playing ? "Pause" : "Play"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveEvent((value) => Math.min(replay.timeline.length - 1, value + 1))}
+                                            className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-400"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                                    {replay.timeline.map((event, index) => (
+                                        <button
+                                            type="button"
+                                            key={event._id || `${event.eventType}-${event.occurredAt}-${index}`}
+                                            onClick={() => setActiveEvent(index)}
+                                            className={`w-full rounded-lg border p-3 text-left transition ${index === activeEvent
+                                                ? "border-cyan-400/40 bg-cyan-400/10"
+                                                : index < activeEvent
+                                                    ? "border-emerald-400/15 bg-emerald-400/[0.03]"
+                                                    : "border-slate-800 bg-slate-950/50 opacity-60"}`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="text-xs font-semibold text-slate-200">{event.title}</p>
+                                                <span className="shrink-0 text-[9px] text-slate-600">{formatDate(event.occurredAt)}</span>
+                                            </div>
+                                            <p className="mt-1 text-[10px] uppercase tracking-wide text-cyan-500">{event.eventType}</p>
+                                            {event.description && <p className="mt-1 text-xs leading-5 text-slate-400">{event.description}</p>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}
 
-                <div className="flex flex-col gap-2 border-t border-slate-800 p-5 sm:flex-row sm:justify-end">
+                <div className="flex flex-col gap-2 border-t border-slate-800 p-5 sm:flex-row sm:flex-wrap sm:justify-end">
+                    {canExport && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => downloadReport("json")}
+                                disabled={Boolean(downloading)}
+                                className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-xs font-medium text-slate-300 disabled:opacity-50"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                {downloading === "json" ? "Generating..." : "JSON Report"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => downloadReport("pdf")}
+                                disabled={Boolean(downloading)}
+                                className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-xs font-medium text-slate-300 disabled:opacity-50"
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                {downloading === "pdf" ? "Generating..." : "PDF Report"}
+                            </button>
+                        </>
+                    )}
                     <button
                         onClick={onClose}
                         className="rounded-lg border border-slate-700 px-4 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-slate-800 hover:text-white"

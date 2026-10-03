@@ -5,6 +5,8 @@ const {
     getIncidentById,
     createIncident,
     updateIncident,
+    getIncidentReplay,
+    downloadIncidentReport,
 } = require("../controllers/incident.controller");
 
 const {
@@ -18,6 +20,16 @@ const router = express.Router();
 
 // Get all incidents
 router.get("/", authenticate, authorizePermission(PERMISSIONS.INCIDENTS_VIEW), getIncidents);
+
+router.get("/:id/replay", authenticate, authorizePermission(PERMISSIONS.INCIDENTS_VIEW), getIncidentReplay);
+
+router.get(
+    "/:id/report.:format",
+    authenticate,
+    authorizePermission(PERMISSIONS.REPORTS_EXPORT),
+    auditAction("INCIDENT_REPORT_EXPORT", "INCIDENT"),
+    downloadIncidentReport
+);
 
 // Get single incident
 router.get("/:id", authenticate, authorizePermission(PERMISSIONS.INCIDENTS_VIEW), getIncidentById);

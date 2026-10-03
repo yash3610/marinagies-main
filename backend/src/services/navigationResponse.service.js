@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const NavigationAction = require("../models/NavigationAction");
 const TrustedNavigationState = require("../models/TrustedNavigationState");
 const { writeAuditLog } = require("./audit.service");
+const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const radians = (degrees) => degrees * Math.PI / 180;
@@ -121,6 +122,16 @@ const proposeNavigationAction = async ({ vessel, telemetry, event, alert, incide
         reason: "GhostTrace recommends isolating the suspicious GPS feed and navigating from the last multi-sensor trusted position.",
     });
     await runDigitalTwin(action);
+    if (action.incident) appendIncidentEventSafely({
+        incident: action.incident,
+        vessel: action.vessel,
+        eventType: "DIGITAL_TWIN_RESULT",
+        title: `Digital Twin result: ${action.digitalTwin.result}`,
+        description: action.digitalTwin.summary,
+        source: "DIGITAL_TWIN",
+        occurredAt: action.digitalTwin.simulatedAt,
+        data: { action: action._id, actionId: action.actionId, checks: action.digitalTwin.checks },
+    });
     writeAuditLog({
         actorRole: "DIGITAL_TWIN_ENGINE",
         vessel: vessel._id,
