@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import DashboardShellSkeleton from "./dashboard/DashboardShellSkeleton";
 export default function RequireAuth() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
@@ -17,5 +18,5 @@ export default function RequireAuth() {
     return () => { active = false; };
   }, [refreshUser]);
   if (error) return <div className="p-8 text-slate-200">Unable to connect. <button onClick={() => window.location.reload()}>Retry</button></div>;
-  return ready ? <Outlet /> : null;
+  return ready ? <Outlet /> : <DashboardShellSkeleton />;
 }
