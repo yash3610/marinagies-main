@@ -17,6 +17,7 @@ const { analyzeGhostTrace } = require("../src/services/ghostTrace.service");
 const { evaluateDigitalTwin } = require("../src/services/navigationResponse.service");
 const { createTextPdf } = require("../src/services/pdf.service");
 const { inferredTimeline } = require("../src/services/incidentReport.service");
+const { evaluateDeviceHealth } = require("../src/services/edgeArmor.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -222,4 +223,15 @@ test("legacy incident replay is reconstructed chronologically from stored eviden
   });
   assert.deepEqual(timeline.map(event=>event.eventType),["DETECTION","ALERT_CREATED","INCIDENT_CREATED","DIGITAL_TWIN_RESULT"]);
   assert.ok(timeline.every(event=>event.data.inferred));
+});
+
+test("EdgeArmor explains healthy, stale and firmware-tampered device scores", () => {
+  const healthy=evaluateDeviceHealth({deviceStatus:"ONLINE",signalStrength:90,temperature:32,reportedFirmware:"1.0.0",approvedFirmware:"1.0.0"});
+  assert.equal(healthy.riskScore,0);
+  assert.equal(healthy.effectiveStatus,"ONLINE");
+  const compromised=evaluateDeviceHealth({deviceStatus:"OFFLINE",signalStrength:8,temperature:80,reportedFirmware:"evil",approvedFirmware:"1.0.0",heartbeatAgeSeconds:180});
+  assert.equal(compromised.riskScore,100);
+  assert.equal(compromised.riskLevel,"CRITICAL");
+  assert.ok(compromised.anomalyCodes.includes("FIRMWARE_MISMATCH"));
+  assert.ok(compromised.anomalyCodes.includes("HEARTBEAT_MISSING"));
 });

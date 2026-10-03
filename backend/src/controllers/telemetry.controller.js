@@ -6,6 +6,7 @@ const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { ingestTelemetry } = require("../services/telemetry.service");
 const { emitTelemetry } = require("../services/realtime.service");
 const { processGhostTraceDetection } = require("../services/ghostTrace.service");
+const { processEdgeArmorTelemetry } = require("../services/edgeArmor.service");
 
 const toLegacyTelemetry = (state) => state && ({
     _id: state.telemetry,
@@ -126,8 +127,16 @@ const createTelemetry = async (req, res) => {
         for (const sample of samples) {
             const result = await ingestTelemetry(sample);
             if (result.isLatest && !result.duplicate) {
-                result.ghostTrace = await processGhostTraceDetection({
+                result.edgeArmor = await processEdgeArmorTelemetry({
                     telemetry: result.telemetry,
+                    vessel: result.vessel,
+                    io: req.app.get("io"),
+                });
+                const detectionTelemetry = result.edgeArmor?.device?.containmentState === "QUARANTINED"
+                    ? { ...result.telemetry.toObject(), motion: undefined }
+                    : result.telemetry;
+                result.ghostTrace = await processGhostTraceDetection({
+                    telemetry: detectionTelemetry,
                     previousState: result.previousState,
                     vessel: result.vessel,
                     io: req.app.get("io"),
@@ -142,7 +151,7 @@ const createTelemetry = async (req, res) => {
                 vessel: item.vessel,
             }));
         if (liveRecords.length) emitTelemetry(req.app.get("io"), liveRecords);
-        const summaries = results.map(({ telemetry, duplicate, isLatest, ghostTrace }) => ({
+        const summaries = results.map(({ telemetry, duplicate, isLatest, ghostTrace, edgeArmor }) => ({
             telemetry,
             duplicate,
             isLatest,
@@ -153,6 +162,13 @@ const createTelemetry = async (req, res) => {
                 confidenceLevel: ghostTrace.event.confidenceLevel,
                 alertId: ghostTrace.alert?._id || null,
                 incidentId: ghostTrace.incident?._id || null,
+            } : null,
+            edgeArmor: edgeArmor ? {
+                deviceId: edgeArmor.device._id,
+                status: edgeArmor.device.status,
+                containmentState: edgeArmor.device.containmentState,
+                riskScore: edgeArmor.analysis.riskScore,
+                alertId: edgeArmor.alert?._id || null,
             } : null,
         }));
 
@@ -165,6 +181,7 @@ const createTelemetry = async (req, res) => {
                 duplicate: summaries[0].duplicate,
                 isLatest: summaries[0].isLatest,
                 ghostTrace: summaries[0].ghostTrace,
+                edgeArmor: summaries[0].edgeArmor,
             } }),
         });
     } catch (error) {

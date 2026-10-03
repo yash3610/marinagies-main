@@ -12,6 +12,7 @@ const { startTelemetrySimulator } = require("./services/telemetrySimulator");
 const { ACCESS_TOKEN_COOKIE } = require("./controllers/auth.controller");
 const { readCookie, verifySessionToken } = require("./middleware/auth.middleware");
 const { vesselRoom } = require("./services/realtime.service");
+const { startEdgeArmorMonitor } = require("./services/edgeArmor.service");
 
 const PORT = process.env.PORT || 5000;
 
@@ -130,6 +131,7 @@ io.on("connection", async (socket) => {
 const startServer = async () => {
     try {
         await connectDB();
+        startEdgeArmorMonitor(io);
         if (process.env.ENABLE_TELEMETRY_SIMULATOR === "true") {
             startTelemetrySimulator(io);
         }

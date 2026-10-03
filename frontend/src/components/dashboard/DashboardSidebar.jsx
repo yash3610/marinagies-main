@@ -30,7 +30,7 @@ const operations = [
     { label: "Incidents", path: "/dashboard/incidents", icon: ShieldAlert, permission: "incidents:view" },
     { label: "Digital Twin", path: "/dashboard/digital-twin", icon: Boxes, permission: "digital-twin:view" },
     { label: "Reports", path: "/dashboard/reports", icon: FileText, permission: "reports:view" },
-    { label: "Devices", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
+    { label: "EdgeArmor", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

@@ -2,6 +2,7 @@ const VesselCurrentState = require("../models/VesselCurrentState");
 const SimulationSession = require("../models/SimulationSession");
 const { ingestTelemetry } = require("./telemetry.service");
 const { processGhostTraceDetection } = require("./ghostTrace.service");
+const { processEdgeArmorTelemetry } = require("./edgeArmor.service");
 const { emitTelemetry, emitVesselEvent } = require("./realtime.service");
 
 const randomChange = (value, amount) => {
@@ -83,8 +84,16 @@ const simulateTelemetry = async (io) => {
             });
             let ghostTrace = null;
             if (result.isLatest && !result.duplicate) {
-                ghostTrace = await processGhostTraceDetection({
+                const edgeArmor = await processEdgeArmorTelemetry({
                     telemetry: result.telemetry,
+                    vessel: result.vessel,
+                    io,
+                });
+                const detectionTelemetry = edgeArmor?.device?.containmentState === "QUARANTINED"
+                    ? { ...result.telemetry.toObject(), motion: undefined }
+                    : result.telemetry;
+                ghostTrace = await processGhostTraceDetection({
+                    telemetry: detectionTelemetry,
                     previousState: result.previousState,
                     vessel: result.vessel,
                     io,
