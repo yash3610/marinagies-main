@@ -20,6 +20,7 @@ const { inferredTimeline } = require("../src/services/incidentReport.service");
 const { evaluateDeviceHealth } = require("../src/services/edgeArmor.service");
 const { scoreUnknownDomain, evaluateSegmentation } = require("../src/services/netGuard.service");
 const { analyzeAttackSequence } = require("../src/services/agentWatch.service");
+const { calculateSupplierRisk, buildWhatIfScenario } = require("../src/services/fleetChoke.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -268,4 +269,23 @@ test("AgentWatch distinguishes machine-speed progression from incomplete activit
   const incomplete=analyzeAttackSequence(kinds.slice(0,4).map(([eventKind,stage],index)=>({eventKind,stage,timestamp:new Date(base+index*500)})));
   assert.equal(incomplete.classification,"INCOMPLETE");
   assert.ok(incomplete.confidence<70);
+});
+
+test("FleetChoke calculates weighted supplier exposure and vessel blast radius", () => {
+  const supplier={name:"Test Navigation Vendor",baseRisk:10,cves:[{cvssScore:9.8}]};
+  const assets=[
+    {vessel:"vessel-a",criticality:"SAFETY_CRITICAL",operationalStatus:"ACTIVE"},
+    {vessel:"vessel-a",criticality:"OPERATIONAL",operationalStatus:"ACTIVE"},
+    {vessel:"vessel-b",criticality:"STANDARD",operationalStatus:"ACTIVE"},
+  ];
+  const risk=calculateSupplierRisk({supplier,assets,edgeDevices:[{health:{riskScore:80}}]});
+  assert.equal(risk.blastRadius,7);
+  assert.equal(risk.affectedVesselCount,2);
+  assert.equal(risk.riskLevel,"HIGH");
+  assert.ok(risk.riskScore>=55);
+  const scenario=buildWhatIfScenario({supplier,assets,compromiseSeverity:90});
+  assert.equal(scenario.affectedVessels.length,2);
+  assert.equal(scenario.totalAssets,3);
+  assert.equal(scenario.affectedVessels[0].vessel,"vessel-a");
+  assert.ok(scenario.affectedVessels[0].projectedRisk>scenario.affectedVessels[1].projectedRisk);
 });

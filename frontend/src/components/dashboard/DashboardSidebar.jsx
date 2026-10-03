@@ -6,6 +6,7 @@ import {
     Bot,
     Boxes,
     FileText,
+    GitFork,
     Globe2,
     Gauge,
     LayoutDashboard,
@@ -35,6 +36,7 @@ const operations = [
     { label: "EdgeArmor", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
     { label: "NetGuard", path: "/dashboard/network", icon: Globe2, permission: "network:view" },
     { label: "AgentWatch", path: "/dashboard/agentwatch", icon: Bot, permission: "security-operations:view" },
+    { label: "FleetChoke", path: "/dashboard/fleet-risk", icon: GitFork, permission: "fleet-risk:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

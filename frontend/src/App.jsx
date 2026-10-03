@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import EdgeArmor from "./pages/EdgeArmor";
 import NetGuard from "./pages/NetGuard";
 import AgentWatch from "./pages/AgentWatch";
+import FleetChoke from "./pages/FleetChoke";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="devices" element={permitted("devices:view", <EdgeArmor />)} />
         <Route path="network" element={permitted("network:view", <NetGuard />)} />
         <Route path="agentwatch" element={permitted("security-operations:view", <AgentWatch />)} />
+        <Route path="fleet-risk" element={permitted("fleet-risk:view", <FleetChoke />)} />
         <Route path="users" element={permitted("users:manage", <Users />)} />
         <Route path="settings" element={permitted("settings:view", <Settings />)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />

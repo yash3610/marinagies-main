@@ -3,6 +3,7 @@ const EdgeDevice = require("../models/EdgeDevice");
 const Alert = require("../models/Alert");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { syncEdgeDeviceAsset } = require("./fleetChoke.service");
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 const riskLevelFor = (score) => score >= 80 ? "CRITICAL" : score >= 50 ? "HIGH" : score >= 20 ? "MEDIUM" : "LOW";
@@ -132,6 +133,7 @@ const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
     );
     const populated = await EdgeDevice.findById(device._id).populate("vessel", "name vesselId status").lean();
     emitVesselEvent(io, "edge-device:update", populated, targetVessel);
+    await syncEdgeDeviceAsset(device, io);
     const alert = analysis.riskScore >= 20 ? await createDeviceAlert({ device, analysis, io }) : null;
     return { device, analysis, alert };
 };
@@ -154,6 +156,7 @@ const applyMockFault = async ({ device, fault, io }) => {
         signalStrength: inputs[fault].signalStrength, temperature: inputs[fault].temperature, evaluatedAt: new Date(),
     };
     await device.save();
+    await syncEdgeDeviceAsset(device, io);
     const alert = await createDeviceAlert({ device, analysis, io });
     return { device, analysis, alert };
 };
@@ -171,6 +174,7 @@ const checkStaleDevices = async (io, now = new Date()) => {
         device.health.anomalyCodes = analysis.anomalyCodes;
         device.health.evaluatedAt = now;
         await device.save();
+        await syncEdgeDeviceAsset(device, io);
         await createDeviceAlert({ device, analysis, io });
         emitVesselEvent(io, "edge-device:update", device, device.vessel);
     }

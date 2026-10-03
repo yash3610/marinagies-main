@@ -31,7 +31,7 @@ No module is considered complete when it exists only as a page, button, route na
 9. EdgeArmor and device inventory. **Implemented for mock and physical telemetry contracts: registry, heartbeat monitor, explainable health/risk scoring, anomaly alerts and guarded quarantine/release.**
 10. NetGuard DNS/network defense. **Deterministic MVP implemented: authenticated event ingestion, threat indicators, DNS sinkhole decisions, review/whitelist, default-deny segmentation, satellite-policy failover, alerts and audit. OS-level DNS/SD-WAN adapters remain deployment work.**
 11. AgentWatch attack-sequence detection. **Onboard deterministic MVP implemented: append-only event stream, four-stage timing correlation, MITRE mapping, explainability/confidence, HIGH-confidence source isolation, analyst review and confirmed fleet-pattern sharing. Trained shore ML remains Phase 17.**
-12. FleetChoke supplier/device risk.
+12. FleetChoke supplier/device risk. **MongoDB dependency-graph MVP implemented: supplier/asset/firmware inventory, EdgeArmor auto-sync, CVE + field-anomaly risk, weighted blast radius, fleet alerts, interactive dependency map and stored what-if scenarios. Neo4j/GNN remains an optional scale-out implementation.**
 13. SARVerify distress authentication.
 14. ROCShield remote-command integrity.
 15. RecoveryShield ransomware detection and recovery simulation.
