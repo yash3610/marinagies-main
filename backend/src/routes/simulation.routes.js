@@ -5,6 +5,7 @@ const {
     startVoyage,
     stopVoyage,
     injectGpsSpoofing,
+    injectFakeDistress,
     resetSimulation,
 } = require("../controllers/simulation.controller");
 const { authenticate, authorizePermission } = require("../middleware/auth.middleware");
@@ -17,6 +18,7 @@ router.get("/vessel/:vesselId", authenticate, authorizePermission(PERMISSIONS.AT
 router.post("/voyage/start", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("VOYAGE_SIMULATION_START", "SIMULATION"), startVoyage);
 router.post("/voyage/stop", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("VOYAGE_SIMULATION_STOP", "SIMULATION"), stopVoyage);
 router.post("/gps-spoofing", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("GPS_SPOOFING_INJECT", "SIMULATION"), injectGpsSpoofing);
+router.post("/fake-distress", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("FAKE_DISTRESS_INJECT", "DISTRESS_SIGNAL"), injectFakeDistress);
 router.post("/reset", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("ATTACK_SIMULATION_RESET", "SIMULATION"), resetSimulation);
 
 module.exports = router;

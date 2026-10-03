@@ -19,6 +19,7 @@ import {
     ScrollText,
     Users,
     Siren,
+    LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -37,6 +38,7 @@ const operations = [
     { label: "NetGuard", path: "/dashboard/network", icon: Globe2, permission: "network:view" },
     { label: "AgentWatch", path: "/dashboard/agentwatch", icon: Bot, permission: "security-operations:view" },
     { label: "FleetChoke", path: "/dashboard/fleet-risk", icon: GitFork, permission: "fleet-risk:view" },
+    { label: "SARVerify", path: "/dashboard/sarverify", icon: LifeBuoy, permission: "sar-verify:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, CircleStop, Navigation, Play, Radio, RotateCcw, ShieldAlert, Siren } from "lucide-react";
+import { Activity, CircleStop, LifeBuoy, Navigation, Play, Radio, RotateCcw, ShieldAlert, Siren } from "lucide-react";
 import api from "../services/api";
 import { createSocket } from "../services/socket";
 import { useAuth } from "../hooks/useAuth";
@@ -93,7 +93,7 @@ const AttackSimulation = () => {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-white">Attack Simulation</h1>
-                            <p className="text-sm text-slate-400">Controlled voyage and GPS spoofing demonstration</p>
+                            <p className="text-sm text-slate-400">Controlled voyage, GPS spoofing and fake-distress demonstrations</p>
                         </div>
                     </div>
                 </div>
@@ -124,7 +124,7 @@ const AttackSimulation = () => {
                         </span>
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         <Metric label="GPS position" value={`${formatCoordinate(telemetry?.latitude)}, ${formatCoordinate(telemetry?.longitude)}`} />
                         <Metric label="Independent AIS" value={`${formatCoordinate(telemetry?.navigationReference?.aisLatitude)}, ${formatCoordinate(telemetry?.navigationReference?.aisLongitude)}`} />
                         <Metric label="Speed" value={`${Number(telemetry?.speed || session?.actual?.speed || 0).toFixed(1)} kn`} />
@@ -143,6 +143,7 @@ const AttackSimulation = () => {
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <ActionButton icon={Play} label="Start Voyage" color="cyan" disabled={!canManage || busy || isRunning} onClick={() => runAction("/attack-simulation/voyage/start")} />
                         <ActionButton icon={Siren} label="Inject GPS Spoofing" color="red" disabled={!canManage || busy || !isRunning || attackActive} onClick={() => runAction("/attack-simulation/gps-spoofing", { distanceMeters: 650, direction: "NORTH" })} />
+                        <ActionButton icon={LifeBuoy} label="Inject Fake Distress" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/fake-distress")} />
                         <ActionButton icon={RotateCcw} label="Restore Signals" color="amber" disabled={!canManage || busy || !session} onClick={() => runAction("/attack-simulation/reset")} />
                         <ActionButton icon={CircleStop} label="Stop Voyage" color="slate" disabled={!canManage || busy || !isRunning} onClick={() => runAction("/attack-simulation/voyage/stop")} />
                     </div>

@@ -21,6 +21,7 @@ const { evaluateDeviceHealth } = require("../src/services/edgeArmor.service");
 const { scoreUnknownDomain, evaluateSegmentation } = require("../src/services/netGuard.service");
 const { analyzeAttackSequence } = require("../src/services/agentWatch.service");
 const { calculateSupplierRisk, buildWhatIfScenario } = require("../src/services/fleetChoke.service");
+const { scoreDistressSignal } = require("../src/services/sarVerify.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -288,4 +289,23 @@ test("FleetChoke calculates weighted supplier exposure and vessel blast radius",
   assert.equal(scenario.totalAssets,3);
   assert.equal(scenario.affectedVessels[0].vessel,"vessel-a");
   assert.ok(scenario.affectedVessels[0].projectedRisk>scenario.affectedVessels[1].projectedRisk);
+});
+
+test("SARVerify accepts corroborated distress and rejects a known hoax", () => {
+  const genuine=scoreDistressSignal({
+    input:{format:"AIS_EPIRB",mmsi:"419001234",distressNature:"SINKING",claimedLocation:{latitude:18.94,longitude:72.84},signal:{protocolValid:true,signalStrength:90,corroboratingSources:["COAST_GUARD","EPIRB_SATELLITE","NEARBY_VESSEL"]}},
+    registry:{active:true,falseAlarmCount:0,confirmedHoaxCount:0,lastKnownLocation:{latitude:18.94,longitude:72.84}},
+    nearbyVessels:[{latitude:18.95,longitude:72.84}],weather:{condition:"ROUGH",waveHeightMeters:4,observedAt:new Date()},
+  });
+  assert.equal(genuine.decision,"AUTO_ACCEPTED");
+  assert.ok(genuine.trustScore>0.75);
+  assert.equal(Object.keys(genuine.scores).length,5);
+  const hoax=scoreDistressSignal({
+    input:{format:"DSC",mmsi:"999666333",distressNature:"DISABLED",claimedLocation:{latitude:18.94,longitude:72.84},signal:{protocolValid:false,signalStrength:15,corroboratingSources:[]}},
+    registry:{active:false,falseAlarmCount:4,confirmedHoaxCount:2,lastKnownLocation:{latitude:12,longitude:68}},
+    nearbyVessels:[],weather:{condition:"CALM",waveHeightMeters:.2,observedAt:new Date()},falseAlarmZoneCount:1,
+  });
+  assert.equal(hoax.decision,"LIKELY_FALSE");
+  assert.ok(hoax.trustScore<0.4);
+  assert.match(hoax.explanation.whyItMatters,/course-diversion/);
 });

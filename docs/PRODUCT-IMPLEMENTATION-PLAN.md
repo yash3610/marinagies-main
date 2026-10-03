@@ -32,7 +32,7 @@ No module is considered complete when it exists only as a page, button, route na
 10. NetGuard DNS/network defense. **Deterministic MVP implemented: authenticated event ingestion, threat indicators, DNS sinkhole decisions, review/whitelist, default-deny segmentation, satellite-policy failover, alerts and audit. OS-level DNS/SD-WAN adapters remain deployment work.**
 11. AgentWatch attack-sequence detection. **Onboard deterministic MVP implemented: append-only event stream, four-stage timing correlation, MITRE mapping, explainability/confidence, HIGH-confidence source isolation, analyst review and confirmed fleet-pattern sharing. Trained shore ML remains Phase 17.**
 12. FleetChoke supplier/device risk. **MongoDB dependency-graph MVP implemented: supplier/asset/firmware inventory, EdgeArmor auto-sync, CVE + field-anomaly risk, weighted blast radius, fleet alerts, interactive dependency map and stored what-if scenarios. Neo4j/GNN remains an optional scale-out implementation.**
-13. SARVerify distress authentication.
+13. SARVerify distress authentication. **Deterministic offline-capable MVP implemented: GMDSS/DSC/AIS-EPIRB ingestion contract, local MMSI and weather caches, five-dimension weighted trust scoring, auto-accept/navigation dispatch, bridge/ROC review, likely-hoax alert/incident response and full audit evidence. External GMDSS hardware and fleet-intelligence synchronization remain deployment work.**
 14. ROCShield remote-command integrity.
 15. RecoveryShield ransomware detection and recovery simulation.
 16. Unified threat intelligence, fleet learning and compliance evidence.

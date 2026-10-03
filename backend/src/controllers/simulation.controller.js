@@ -4,6 +4,7 @@ const Vessel = require("../models/Vessel");
 const VesselCurrentState = require("../models/VesselCurrentState");
 const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { emitVesselEvent } = require("../services/realtime.service");
+const { evaluateAndStoreDistressSignal } = require("../services/sarVerify.service");
 
 const requireVesselAccess = async (req, res) => {
     const vesselId = req.body?.vessel || req.params?.vesselId;
@@ -193,4 +194,26 @@ const resetSimulation = async (req, res) => {
     }
 };
 
-module.exports = { getSessions, getVesselSession, startVoyage, stopVoyage, injectGpsSpoofing, resetSimulation };
+const injectFakeDistress = async (req, res) => {
+    try {
+        const vessel = await requireVesselAccess(req, res);
+        if (!vessel) return;
+        const current = await VesselCurrentState.findOne({ vessel: vessel._id }).lean();
+        const signal = await evaluateAndStoreDistressSignal({
+            receivingVessel: vessel._id,
+            format: "DSC",
+            mmsi: String(req.body.mmsi || "999666333"),
+            distressNature: req.body.distressNature || "DISABLED",
+            claimedLocation: req.body.claimedLocation || { latitude: current?.latitude ?? vessel.latitude, longitude: current?.longitude ?? vessel.longitude },
+            signal: { protocolValid: false, signalStrength: Number(req.body.signalStrength ?? 24), sourceChannel: "SIMULATED_VHF-70", corroboratingSources: [] },
+            simulated: true,
+        }, req.app.get("io"));
+        res.locals.auditVesselId = String(vessel._id);
+        res.locals.auditResourceId = String(signal._id);
+        res.status(201).json({ success: true, message: "Fake distress signal injected and evaluated by SARVerify", signal });
+    } catch (error) {
+        res.status(error.status || 400).json({ success: false, message: error.message || "Failed to inject fake distress signal" });
+    }
+};
+
+module.exports = { getSessions, getVesselSession, startVoyage, stopVoyage, injectGpsSpoofing, injectFakeDistress, resetSimulation };
