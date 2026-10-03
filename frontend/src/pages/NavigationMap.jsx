@@ -4,9 +4,12 @@ import {
     TileLayer,
     Marker,
     Popup,
+    Polyline,
+    CircleMarker,
     useMap,
 } from "react-leaflet";
 import { createSocket } from "../services/socket";
+import api from "../services/api";
 import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
@@ -321,6 +324,17 @@ const NavigationMap = () => {
 
     const [selectedVessel, setSelectedVessel] =
         useState(null);
+    const [simulationSessions, setSimulationSessions] = useState([]);
+
+    const selectedSession = useMemo(() => simulationSessions.find((session) =>
+        String(session.vessel?._id || session.vessel) === String(selectedVessel?.vessel?._id || selectedVessel?.vessel)
+    ) || null, [simulationSessions, selectedVessel]);
+
+    useEffect(() => {
+        api.get("/attack-simulation")
+            .then((response) => setSimulationSessions(response.data?.sessions || []))
+            .catch(() => setSimulationSessions([]));
+    }, []);
 
     // ========================================
     // SOCKET.IO
@@ -361,10 +375,28 @@ const NavigationMap = () => {
                         });
                         return Array.from(latest.values());
                     });
+                    setSelectedVessel((currentSelected) => {
+                        if (!currentSelected) return currentSelected;
+                        const selectedId = String(currentSelected.vessel?._id || currentSelected.vessel);
+                        const update = data.data.find((record) =>
+                            String(record.vessel?._id || record.vessel || record.telemetry?.vessel) === selectedId
+                        );
+                        if (!update) return currentSelected;
+                        return { ...(update.telemetry || update), vessel: update.vessel };
+                    });
                 }
 
             }
         );
+
+        socket.on("simulation:update", (session) => {
+            const vesselId = String(session?.vessel?._id || session?.vessel || "");
+            if (!vesselId) return;
+            setSimulationSessions((current) => [
+                session,
+                ...current.filter((item) => String(item.vessel?._id || item.vessel) !== vesselId),
+            ]);
+        });
 
         socket.on("disconnect", () => {
 
@@ -1008,6 +1040,49 @@ const NavigationMap = () => {
                     attribution="&copy; OpenStreetMap contributors"
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+
+                {selectedSession?.route?.origin?.latitude !== undefined &&
+                    selectedSession?.route?.destination?.latitude !== undefined && (
+                        <Polyline
+                            positions={[
+                                [selectedSession.route.origin.latitude, selectedSession.route.origin.longitude],
+                                [selectedSession.route.destination.latitude, selectedSession.route.destination.longitude],
+                            ]}
+                            pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "8 8", opacity: 0.75 }}
+                        />
+                    )}
+
+                {selectedVessel?.navigationReference?.aisLatitude !== undefined && (
+                    <CircleMarker
+                        center={[
+                            selectedVessel.navigationReference.aisLatitude,
+                            selectedVessel.navigationReference.aisLongitude,
+                        ]}
+                        radius={8}
+                        pathOptions={{ color: "#22c55e", fillColor: "#22c55e", fillOpacity: 0.8 }}
+                    >
+                        <Popup>AIS / independent physical position</Popup>
+                    </CircleMarker>
+                )}
+
+                {selectedSession?.attack?.active && selectedVessel?.navigationReference?.aisLatitude !== undefined && (
+                    <>
+                        <Polyline
+                            positions={[
+                                [selectedVessel.navigationReference.aisLatitude, selectedVessel.navigationReference.aisLongitude],
+                                [selectedVessel.latitude, selectedVessel.longitude],
+                            ]}
+                            pathOptions={{ color: "#ef4444", weight: 4, dashArray: "5 7" }}
+                        />
+                        <CircleMarker
+                            center={[selectedVessel.latitude, selectedVessel.longitude]}
+                            radius={12}
+                            pathOptions={{ color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.35 }}
+                        >
+                            <Popup>GPS reported position — suspected spoofing</Popup>
+                        </CircleMarker>
+                    </>
+                )}
 
                 {/* ========================================
                     LIVE VESSELS

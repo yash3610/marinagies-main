@@ -174,3 +174,17 @@ test("GhostTrace does not alert when independent motion and navigation signals a
   assert.equal(result.detected,false);
   assert.ok(result.confidenceScore<0.2);
 });
+
+test("college demo 650 metre GPS injection triggers while AIS and MPU6050 stay on the real route", () => {
+  const previous={latitude:18.94,longitude:72.835,speed:10,heading:280,sourceTimestamp:new Date("2026-01-01T00:00:00Z")};
+  const actual={latitude:18.94001,longitude:72.83485};
+  const spoofedLatitude=actual.latitude+(650/111320);
+  const result=analyzeGhostTrace({
+    latitude:spoofedLatitude,longitude:actual.longitude,speed:10,heading:280,timestamp:new Date("2026-01-01T00:00:03Z"),
+    motion:{accelerometer:{x:0.05,y:0.02,z:1},gyroscope:{x:0,y:0,z:0.4},motionDetected:true},
+    navigationReference:{aisLatitude:actual.latitude,aisLongitude:actual.longitude,gyroHeading:280,simulatedSpeed:10}
+  },previous,0.7);
+  assert.equal(result.detected,true);
+  assert.notEqual(result.alertType,"SIGNALS_CONSISTENT");
+  assert.ok(result.signalsEvaluated.aisGapMeters>600);
+});

@@ -15,6 +15,7 @@ import {
     Ship,
     ScrollText,
     Users,
+    Siren,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -23,6 +24,7 @@ const operations = [
     { label: "Fleet Overview", path: "/dashboard/fleet", icon: Ship, permission: "vessels:view" },
     { label: "Live Monitoring", path: "/dashboard/monitoring", icon: Activity, permission: "telemetry:view" },
     { label: "Navigation Map", path: "/dashboard/navigation", icon: Map, permission: "navigation:view" },
+    { label: "Attack Simulation", path: "/dashboard/attack-simulation", icon: Siren, permission: "attack-simulation:view" },
     { label: "Security Operations", path: "/dashboard/soc", icon: Radar, permission: "security-operations:view" },
     { label: "Alerts", path: "/dashboard/alerts", icon: Bell, permission: "alerts:view" },
     { label: "Incidents", path: "/dashboard/incidents", icon: ShieldAlert, permission: "incidents:view" },

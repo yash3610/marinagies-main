@@ -3,6 +3,7 @@ const Alert = require("../models/Alert");
 const Incident = require("../models/Incident");
 const Vessel = require("../models/Vessel");
 const GhostTraceEvent = require("../models/GhostTraceEvent");
+const SimulationSession = require("../models/SimulationSession");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
 
@@ -40,6 +41,16 @@ const projectPosition = (position, headingDegrees, distanceMeters) => {
 
 const headingDifference = (first, second) => Math.abs(((first - second + 540) % 360) - 180);
 
+const courseBetween = (from, to) => {
+    const longitudeDelta = radians(to.longitude - from.longitude);
+    const latitude1 = radians(from.latitude);
+    const latitude2 = radians(to.latitude);
+    return (Math.atan2(
+        Math.sin(longitudeDelta) * Math.cos(latitude2),
+        Math.cos(latitude1) * Math.sin(latitude2) - Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta)
+    ) * 180 / Math.PI + 360) % 360;
+};
+
 const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     const thresholdValue = Number(configuredThreshold ?? process.env.GHOSTTRACE_ALERT_THRESHOLD ?? 0.7);
     const threshold = clamp(Number.isFinite(thresholdValue) ? thresholdValue : 0.7, 0.5, 0.95);
@@ -66,10 +77,12 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     let expectedPosition = null;
     let deadReckoningGapMeters = null;
     let boundingRadiusMeters = null;
+    let gpsCourseHeading = null;
     if (previousState?.sourceTimestamp) {
         elapsedSeconds = (new Date(telemetry.timestamp) - new Date(previousState.sourceTimestamp)) / 1000;
         if (elapsedSeconds > 0 && elapsedSeconds <= 3600) {
             gpsDistanceMeters = haversineMeters(previousState, current);
+            gpsCourseHeading = gpsDistanceMeters > 5 ? courseBetween(previousState, current) : null;
             impliedSpeedKnots = gpsDistanceMeters / elapsedSeconds / KNOT_TO_METERS_PER_SECOND;
             const speed = Number(reference.simulatedSpeed ?? previousState.speed ?? telemetry.speed ?? 0);
             const heading = Number(reference.gyroHeading ?? previousState.heading ?? telemetry.heading ?? 0);
@@ -86,8 +99,8 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
             longitude: reference.aisLongitude,
         });
     }
-    const gyroHeadingDelta = Number.isFinite(reference.gyroHeading)
-        ? headingDifference(Number(telemetry.heading), reference.gyroHeading)
+    const gyroHeadingDelta = Number.isFinite(reference.gyroHeading) && gpsCourseHeading !== null
+        ? headingDifference(gpsCourseHeading, reference.gyroHeading)
         : null;
     const simulatedSpeedDelta = Number.isFinite(reference.simulatedSpeed)
         ? Math.abs(Number(telemetry.speed) - reference.simulatedSpeed)
@@ -98,8 +111,8 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     const impossibleSpeed = impliedSpeedKnots === null ? 0 : clamp((impliedSpeedKnots - 45) / 80);
     const physicalMotionMismatch = physicalMotion === false && gpsDistanceMeters !== null
         ? clamp((gpsDistanceMeters - 40) / 200) : 0;
-    const aisCrossReference = aisGapMeters === null ? 0 : clamp((aisGapMeters - 100) / 1000);
-    const headingMismatch = gyroHeadingDelta === null ? 0 : clamp((gyroHeadingDelta - 25) / 120);
+    const aisCrossReference = aisGapMeters === null ? 0 : clamp((aisGapMeters - 75) / 500);
+    const headingMismatch = gyroHeadingDelta === null ? 0 : clamp((gyroHeadingDelta - 15) / 90);
     const speedMismatch = simulatedSpeedDelta === null ? 0 : clamp((simulatedSpeedDelta - 5) / 30);
 
     let score = deadReckoning * 0.25
@@ -139,6 +152,7 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
             deadReckoningBoundingRadiusMeters: boundingRadiusMeters,
             impliedSpeedKnots,
             gyrocompassHeading: reference.gyroHeading ?? null,
+            gpsCourseHeading,
             engineOrSimulatedSpeedKnots: reference.simulatedSpeed ?? telemetry.speed ?? null,
             aisPosition: Number.isFinite(reference.aisLatitude) ? { latitude: reference.aisLatitude, longitude: reference.aisLongitude } : null,
             aisGapMeters,
@@ -230,6 +244,12 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
     event.alert = alert?._id || null;
     event.incident = incident?._id || null;
     await event.save();
+    const simulationSession = await SimulationSession.findOneAndUpdate(
+        { vessel: vessel._id },
+        { $set: { hardware: { greenLed: false, redLed: true, buzzer: true } } },
+        { new: true }
+    ).populate("vessel", "name vesselId status riskScore riskLevel route destination");
+    if (simulationSession) emitVesselEvent(io, "simulation:update", simulationSession, vessel._id);
     await Vessel.updateOne({ _id: vessel._id }, {
         $max: { riskScore: confidence },
         $set: { riskLevel: severity === "CRITICAL" ? "CRITICAL" : severity },

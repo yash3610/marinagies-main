@@ -12,6 +12,7 @@ const telemetryRoutes = require("./routes/telemetry.routes");
 const usersRoutes = require("./routes/users.routes");
 const auditLogRoutes = require("./routes/auditLog.routes");
 const ghostTraceRoutes = require("./routes/ghostTrace.routes");
+const simulationRoutes = require("./routes/simulation.routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -70,6 +71,7 @@ app.use("/api/incidents", incidentRoutes);
 // TELEMETRY ROUTES
 app.use("/api/telemetry", telemetryRoutes);
 app.use("/api/ghosttrace", ghostTraceRoutes);
+app.use("/api/attack-simulation", simulationRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);

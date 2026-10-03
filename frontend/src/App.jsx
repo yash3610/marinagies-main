@@ -16,6 +16,7 @@ import Devices from "./pages/Devices";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
+import AttackSimulation from "./pages/AttackSimulation";
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="fleet" element={permitted("vessels:view", <FleetOverview />)} />
         <Route path="monitoring" element={permitted("telemetry:view", <LiveMonitoring />)} />
         <Route path="navigation" element={permitted("navigation:view", <NavigationMap />)} />
+        <Route path="attack-simulation" element={permitted("attack-simulation:view", <AttackSimulation />)} />
         <Route path="soc" element={permitted("security-operations:view", <SOC />)} />
         <Route path="alerts" element={permitted("alerts:view", <Alerts />)} />
         <Route path="incidents" element={permitted("incidents:view", <Incidents />)} />
