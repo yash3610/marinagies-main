@@ -12,6 +12,7 @@ const {
 const { authenticate, authorizePermission } = require("../middleware/auth.middleware");
 const { auditAction } = require("../middleware/audit.middleware");
 const { PERMISSIONS } = require("../utils/accessControl");
+const { simulateRansomware } = require("../controllers/recoveryShield.controller");
 
 const router = express.Router();
 router.get("/", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_VIEW), getSessions);
@@ -21,6 +22,7 @@ router.post("/voyage/stop", authenticate, authorizePermission(PERMISSIONS.ATTACK
 router.post("/gps-spoofing", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("GPS_SPOOFING_INJECT", "SIMULATION"), injectGpsSpoofing);
 router.post("/fake-distress", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("FAKE_DISTRESS_INJECT", "DISTRESS_SIGNAL"), injectFakeDistress);
 router.post("/fake-command", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("FAKE_REMOTE_COMMAND_INJECT", "REMOTE_COMMAND"), injectFakeCommand);
+router.post("/ransomware", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("RANSOMWARE_SIMULATE", "FILE_ACTIVITY_EVENT"), simulateRansomware);
 router.post("/reset", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("ATTACK_SIMULATION_RESET", "SIMULATION"), resetSimulation);
 
 module.exports = router;

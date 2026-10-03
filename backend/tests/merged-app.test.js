@@ -24,6 +24,7 @@ const { calculateSupplierRisk, buildWhatIfScenario } = require("../src/services/
 const { scoreDistressSignal } = require("../src/services/sarVerify.service");
 const { scoreRemoteCommand } = require("../src/services/rocShield.service");
 const { generateSecret, generateTotp, verifyTotp } = require("../src/services/totp.service");
+const { analyzeFileActivity, encryptPayload, decryptPayload } = require("../src/services/recoveryShield.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -330,4 +331,24 @@ test("ROCShield authenticator codes verify only inside the accepted TOTP window"
   assert.equal(verifyTotp(secret,code,now),true);
   assert.equal(verifyTotp(secret,"000000",now),code==="000000");
   assert.equal(verifyTotp(secret,code,now+120000),false);
+});
+
+test("RecoveryShield requires all three ransomware signals for automatic containment", () => {
+  const suspicious=analyzeFileActivity({modificationsPerMinute:450,directoriesAffected:8,extensionsObserved:[],cpuPercent:35,ioPercent:40});
+  assert.equal(suspicious.classification,"SUSPICIOUS");
+  assert.equal(suspicious.signals.massModificationBurst,true);
+  const confirmed=analyzeFileActivity({modificationsPerMinute:640,directoriesAffected:12,extensionsObserved:[".locked","encrypted"],cpuPercent:96,ioPercent:94});
+  assert.equal(confirmed.classification,"RANSOMWARE_CONFIRMED");
+  assert.equal(confirmed.confidence,98);
+  assert.equal(confirmed.signals.signalCount,3);
+});
+
+test("RecoveryShield encrypted snapshots authenticate and detect tampering", () => {
+  const createdAt=new Date("2026-01-01T00:00:00Z");
+  const encrypted=encryptPayload({vessel:{status:"ONLINE"},devices:[{deviceId:"EDGE-1"}]},"vessel-test",createdAt);
+  const snapshot={vessel:"vessel-test",encryptedPayload:encrypted.encryptedPayload,iv:encrypted.iv,authTag:encrypted.authTag,sha256:encrypted.plaintextHash,encryption:{keyId:encrypted.keyId}};
+  const verified=decryptPayload(snapshot);
+  assert.equal(verified.verified,true);
+  assert.equal(verified.payload.devices[0].deviceId,"EDGE-1");
+  assert.throws(()=>decryptPayload({...snapshot,encryptedPayload:Buffer.from("tampered").toString("base64")}));
 });

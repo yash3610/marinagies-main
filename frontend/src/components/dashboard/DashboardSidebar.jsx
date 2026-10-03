@@ -21,6 +21,7 @@ import {
     Siren,
     LifeBuoy,
     RadioTower,
+    DatabaseBackup,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -41,6 +42,7 @@ const operations = [
     { label: "FleetChoke", path: "/dashboard/fleet-risk", icon: GitFork, permission: "fleet-risk:view" },
     { label: "SARVerify", path: "/dashboard/sarverify", icon: LifeBuoy, permission: "sar-verify:view" },
     { label: "ROCShield", path: "/dashboard/rocshield", icon: RadioTower, permission: "commands:view" },
+    { label: "RecoveryShield", path: "/dashboard/recovery", icon: DatabaseBackup, permission: "recovery:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

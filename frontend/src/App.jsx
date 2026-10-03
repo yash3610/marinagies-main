@@ -18,6 +18,7 @@ import AgentWatch from "./pages/AgentWatch";
 import FleetChoke from "./pages/FleetChoke";
 import SARVerify from "./pages/SARVerify";
 import ROCShield from "./pages/ROCShield";
+import RecoveryShield from "./pages/RecoveryShield";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="fleet-risk" element={permitted("fleet-risk:view", <FleetChoke />)} />
         <Route path="sarverify" element={permitted("sar-verify:view", <SARVerify />)} />
         <Route path="rocshield" element={permitted("commands:view", <ROCShield />)} />
+        <Route path="recovery" element={permitted("recovery:view", <RecoveryShield />)} />
         <Route path="users" element={permitted("users:manage", <Users />)} />
         <Route path="settings" element={permitted("settings:view", <Settings />)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />

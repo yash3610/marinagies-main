@@ -1,0 +1,17 @@
+const express = require("express");
+const { getOverview, createManualSnapshot, verifySnapshotEndpoint, ingestActivity, startManualRecovery, previewCase, executeRestore, markShoreSynced, simulateRansomware } = require("../controllers/recoveryShield.controller");
+const { authenticate, authorizePermission } = require("../middleware/auth.middleware");
+const { telemetryIngestionAuth } = require("../middleware/telemetryIngestion.middleware");
+const { auditAction } = require("../middleware/audit.middleware");
+const { PERMISSIONS } = require("../utils/accessControl");
+const router = express.Router();
+router.get("/", authenticate, authorizePermission(PERMISSIONS.RECOVERY_VIEW), getOverview);
+router.post("/snapshots", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("RECOVERY_SNAPSHOT_CREATE", "RECOVERY_SNAPSHOT"), createManualSnapshot);
+router.post("/snapshots/:id/verify", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("RECOVERY_SNAPSHOT_VERIFY", "RECOVERY_SNAPSHOT"), verifySnapshotEndpoint);
+router.post("/activity/ingest", telemetryIngestionAuth, auditAction("FILE_ACTIVITY_INGEST", "FILE_ACTIVITY_EVENT"), ingestActivity);
+router.post("/cases/start", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("MANUAL_RECOVERY_START", "RECOVERY_CASE"), startManualRecovery);
+router.post("/cases/:id/preview", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("RECOVERY_PREVIEW", "RECOVERY_CASE"), previewCase);
+router.post("/cases/:id/restore", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("RECOVERY_RESTORE", "RECOVERY_CASE"), executeRestore);
+router.post("/cases/:id/shore-sync", authenticate, authorizePermission(PERMISSIONS.RECOVERY_EXECUTE), auditAction("RECOVERY_SHORE_SYNC", "RECOVERY_CASE"), markShoreSynced);
+router.post("/simulate", authenticate, authorizePermission(PERMISSIONS.ATTACK_SIMULATION_MANAGE), auditAction("RANSOMWARE_SIMULATE", "FILE_ACTIVITY_EVENT"), simulateRansomware);
+module.exports = router;

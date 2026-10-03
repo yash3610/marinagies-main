@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, CircleStop, LifeBuoy, Navigation, Play, Radio, RotateCcw, ShieldAlert, Siren } from "lucide-react";
+import { Activity, CircleStop, DatabaseBackup, LifeBuoy, Navigation, Play, Radio, RotateCcw, ShieldAlert, Siren } from "lucide-react";
 import api from "../services/api";
 import { createSocket } from "../services/socket";
 import { useAuth } from "../hooks/useAuth";
@@ -145,6 +145,7 @@ const AttackSimulation = () => {
                         <ActionButton icon={Siren} label="Inject GPS Spoofing" color="red" disabled={!canManage || busy || !isRunning || attackActive} onClick={() => runAction("/attack-simulation/gps-spoofing", { distanceMeters: 650, direction: "NORTH" })} />
                         <ActionButton icon={LifeBuoy} label="Inject Fake Distress" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/fake-distress")} />
                         <ActionButton icon={Radio} label="Inject Fake Command" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/fake-command")} />
+                        <ActionButton icon={DatabaseBackup} label="Inject Ransomware" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/ransomware")} />
                         <ActionButton icon={RotateCcw} label="Restore Signals" color="amber" disabled={!canManage || busy || !session} onClick={() => runAction("/attack-simulation/reset")} />
                         <ActionButton icon={CircleStop} label="Stop Voyage" color="slate" disabled={!canManage || busy || !isRunning} onClick={() => runAction("/attack-simulation/voyage/stop")} />
                     </div>
