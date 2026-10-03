@@ -1,0 +1,40 @@
+name: MarineAegis quality gates
+on:
+  push:
+  pull_request:
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm test --prefix backend
+      - run: npx eslint src/pages/MLLab.jsx src/pages/IntelligenceCenter.jsx src/App.jsx src/components/dashboard/DashboardSidebar.jsx
+        working-directory: frontend
+      - run: npm run build --prefix frontend
+      - run: npm audit --prefix backend --omit=dev --audit-level=critical
+      - run: npm audit --prefix frontend --omit=dev --audit-level=critical
+  python-ml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+      - run: python -m pip install -r ml-service/requirements.txt bandit pip-audit
+      - run: python -m pytest ml-service/tests
+        env:
+          PYTHONPATH: ml-service
+          ML_SERVICE_KEY: ci-only-ml-service-key-at-least-32-characters
+      - run: bandit -r ml-service/app
+      - run: pip-audit -r ml-service/requirements.txt

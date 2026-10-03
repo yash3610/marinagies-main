@@ -15,6 +15,7 @@ router.post("/learning/:id/activate", authenticate, authorizePermission(PERMISSI
 router.post("/learning/deployments/:id/rollback", authenticate, authorizePermission(PERMISSIONS.FLEET_LEARNING_MANAGE), auditAction("FLEET_MODEL_ROLLBACK", "VESSEL_MODEL_DEPLOYMENT"), controller.rollback);
 router.post("/ml/train", authenticate, authorizePermission(PERMISSIONS.FLEET_LEARNING_MANAGE), auditAction("ML_MODEL_TRAIN", "ML_TRAINING_RUN"), controller.trainModel);
 router.post("/ml/models/:id/infer", authenticate, authorizePermission(PERMISSIONS.FLEET_LEARNING_VIEW), controller.previewInference);
+router.get("/ml/health", authenticate, authorizePermission(PERMISSIONS.FLEET_LEARNING_VIEW), controller.mlHealth);
 router.post("/compliance/reports", authenticate, authorizePermission(PERMISSIONS.REPORTS_EXPORT), auditAction("COMPLIANCE_REPORT_CREATE", "COMPLIANCE_REPORT"), controller.generateReport);
 router.get("/compliance/reports/:id/:format", authenticate, authorizePermission(PERMISSIONS.REPORTS_EXPORT), controller.downloadReport);
 

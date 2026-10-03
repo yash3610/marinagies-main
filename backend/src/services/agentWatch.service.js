@@ -11,6 +11,7 @@ const { writeAuditLog } = require("./audit.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 const { inferActiveModel } = require("./mlRuntime.service");
 const { runtimeFeatures } = require("./mlTraining.service");
+const { observeOperation } = require("./observability.service");
 
 const STAGE_ORDER = ["RECON", "CREDENTIAL_ATTACK", "LATERAL_MOVEMENT", "EXFILTRATION"];
 const KIND_TO_STAGE = {
@@ -162,6 +163,7 @@ const createSequenceResponse = async ({ analysis, vessel, sourceIp, sourceDevice
 };
 
 const ingestAgentWatchEvent = async (input, io) => {
+    const operationStartedAt = performance.now();
     const vessel = await Vessel.findOne({ _id: input.vessel, isActive: true }).select("_id name vesselId");
     if (!vessel) throw Object.assign(new Error("Vessel not found or inactive"), { status: 404 });
     const eventKind = String(input.eventKind || "").toUpperCase();
@@ -201,6 +203,7 @@ const ingestAgentWatchEvent = async (input, io) => {
         : null;
     const populated = await AgentWatchEvent.findById(event._id).populate("vessel", "name vesselId").lean();
     emitVesselEvent(io, "agentwatch:event", populated, vessel._id);
+    observeOperation("agentwatch_detection", performance.now() - operationStartedAt, { confidence: analysis?.confidence != null ? analysis.confidence / 100 : undefined });
     return { event: populated, sequence, analysis, duplicate: false };
 };
 

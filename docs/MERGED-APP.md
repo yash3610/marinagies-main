@@ -15,3 +15,5 @@ For production run npm run build --prefix frontend, then run the backend with NO
 The original MarineAegis folder is retained as the source reference; it is not required to run the merged app. Neither database seeding nor external form submission is needed for building.
 
 Validation: npm run build --prefix frontend; node --test backend/tests/merged-app.test.js. Integration tests use mocked user persistence and do not write to a database.
+
+Python specialized ML is an optional private service in `ml-service`. Set the same 32+ character `ML_SERVICE_KEY` for the backend and service, set backend `ML_SERVICE_URL=http://127.0.0.1:8000`, and run `docker compose -f docker-compose.ml.yml up --build`. The Node detectors remain the offline-safe fallback if the service is stopped. Prometheus-compatible metrics are exposed at `/api/observability/metrics` only when the caller supplies the configured `X-Observability-Key`.

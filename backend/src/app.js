@@ -22,6 +22,9 @@ const sarVerifyRoutes = require("./routes/sarVerify.routes");
 const rocShieldRoutes = require("./routes/rocShield.routes");
 const recoveryShieldRoutes = require("./routes/recoveryShield.routes");
 const intelligenceRoutes = require("./routes/intelligence.routes");
+const observabilityRoutes = require("./routes/observability.routes");
+const mongoose = require("mongoose");
+const { requestContext, apiRateLimit, rejectDangerousInput } = require("./middleware/platform.middleware");
 
 const app = express();
 app.disable("x-powered-by");
@@ -32,8 +35,12 @@ app.use((req, res, next) => {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    res.setHeader("Content-Security-Policy", "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:");
+    if (process.env.NODE_ENV === "production") res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     next();
 });
+app.use(requestContext);
+app.use(apiRateLimit);
 
 // CORS
 
@@ -48,6 +55,7 @@ app.use(
 
 app.use(express.json({ limit: "100kb", type: "application/json" }));
 app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+app.use(rejectDangerousInput);
 
 // HEALTH CHECK
 
@@ -57,6 +65,10 @@ app.get("/api/health", (req, res) => {
         message: "MARINEAEGIS backend is running",
         timestamp: new Date().toISOString(),
     });
+});
+app.get("/api/health/ready", (req, res) => {
+    const databaseReady = mongoose.connection.readyState === 1;
+    res.status(databaseReady ? 200 : 503).json({ success: databaseReady, status: databaseReady ? "READY" : "NOT_READY", dependencies: { mongodb: databaseReady ? "UP" : "DOWN" }, uptimeSeconds: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
 });
 
 // AUTH ROUTES
@@ -90,6 +102,7 @@ app.use("/api/sarverify", sarVerifyRoutes);
 app.use("/api/rocshield", rocShieldRoutes);
 app.use("/api/recoveryshield", recoveryShieldRoutes);
 app.use("/api/intelligence", intelligenceRoutes);
+app.use("/api/observability", observabilityRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);
@@ -116,6 +129,7 @@ app.use((req, res) => {
     res.status(404).json({
         success: false,
         message: `Route not found: ${req.method} ${req.originalUrl}`,
+        requestId: req.requestId,
     });
 });
 
@@ -127,6 +141,7 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).json({
         success: false,
         message: err.message || "Internal server error",
+        requestId: req.requestId,
     });
 });
 

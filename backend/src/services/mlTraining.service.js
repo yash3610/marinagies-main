@@ -102,4 +102,18 @@ const trainModuleModel = async ({ module, sampleCount, seed, actor }) => {
     return { run, model };
 };
 
-module.exports = { CONFIG, seededRandom, generateDataset, trainLogisticRegression, predictProbability, evaluateArtifact, runtimeFeatures, trainModuleModel };
+const registerPythonTrainingResult = async ({ result, actor }) => {
+    const normalized = String(result.module || "").toUpperCase();
+    if (!CONFIG[normalized]) throw Object.assign(new Error("Python service returned an unsupported module"), { status: 502 });
+    const modelKey = `${normalized}_SPECIALIZED_MODEL`; const latest = await FleetModel.findOne({ modelKey }).sort({ version: -1 }).lean();
+    const metrics = result.metrics || {}; const passed = result.status === "PASSED" && metrics.precision >= 0.9 && metrics.recall >= 0.85;
+    const artifact = { engine: "PYTHON_SPECIALIZED", pythonModelId: result.model_id, algorithm: result.algorithm, featureNames: result.feature_names, threshold: result.threshold };
+    const modelCard = { purpose: CONFIG[normalized].target, trainingData: "Deterministic labelled maritime simulation generated inside the isolated Python ML service", limitations: ["Synthetic evaluation does not replace real labelled maritime trials.", "The deterministic onboard detector remains the fail-safe if Python inference is unavailable."], intendedUse: "Specialized risk signal combined with deterministic safety checks", evaluation: { holdoutOnly: true, datasetHash: result.dataset_hash, ...metrics } };
+    const model = await FleetModel.create({ modelKey, module: normalized, version: (latest?.version || 0) + 1, previousVersion: latest?.version || null, status: passed ? "VALIDATED" : "REJECTED", learningType: "TRAINED_MODEL", patternFingerprints: [], patternCount: result.sample_count, artifactHash: result.artifact_hash, artifact, modelCard, validation: { precision: metrics.precision, recall: metrics.recall, f1: metrics.f1, dataset: `python-simulated-${normalized.toLowerCase()}-${result.seed}`, validatedAt: new Date(), validatedBy: actor }, createdBy: actor, notes: `${result.algorithm} trained by the private Python ML service` });
+    const run = await MLTrainingRun.create({ runId: `MLR-PY-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, module: normalized, algorithm: result.algorithm, seed: result.seed, dataset: { name: model.validation.dataset, sampleCount: result.sample_count, trainingCount: result.training_count, holdoutCount: result.holdout_count, positiveCount: result.positive_count, negativeCount: result.negative_count, featureNames: result.feature_names, hash: result.dataset_hash, simulated: true }, metrics, status: passed ? "PASSED" : "FAILED", artifactHash: result.artifact_hash, fleetModel: model._id, initiatedBy: actor, durationMs: result.duration_ms });
+    model.trainingRun = run._id; await model.save();
+    await writeAuditLog({ user: actor, actorRole: "PYTHON_ML_TRAINING_OPERATOR", action: `PYTHON_ML_TRAINING_${run.status}`, resource: "ML_TRAINING_RUN", resourceId: String(run._id), description: `${normalized} ${result.algorithm} artifact registered after held-out evaluation`, metadata: { pythonModelId: result.model_id, datasetHash: result.dataset_hash, artifactHash: result.artifact_hash, metrics } });
+    return { run, model };
+};
+
+module.exports = { CONFIG, seededRandom, generateDataset, trainLogisticRegression, predictProbability, evaluateArtifact, runtimeFeatures, trainModuleModel, registerPythonTrainingResult };

@@ -7,6 +7,7 @@ const { publishIndicator } = require("./threatIntelligence.service");
 const { syncEdgeDeviceAsset } = require("./fleetChoke.service");
 const { inferActiveModel } = require("./mlRuntime.service");
 const { runtimeFeatures } = require("./mlTraining.service");
+const { observeOperation } = require("./observability.service");
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 const riskLevelFor = (score) => score >= 80 ? "CRITICAL" : score >= 50 ? "HIGH" : score >= 20 ? "MEDIUM" : "LOW";
@@ -89,6 +90,7 @@ const createDeviceAlert = async ({ device, analysis, io }) => {
 };
 
 const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
+    const operationStartedAt = performance.now();
     const rawDeviceId = telemetry.sensorNode?.deviceId;
     if (!rawDeviceId) return null;
     const deviceId = String(rawDeviceId).trim().toUpperCase();
@@ -150,6 +152,7 @@ const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
     emitVesselEvent(io, "edge-device:update", populated, targetVessel);
     await syncEdgeDeviceAsset(device, io);
     const alert = analysis.riskScore >= 20 ? await createDeviceAlert({ device, analysis, io }) : null;
+    observeOperation("edgearmor_detection", performance.now() - operationStartedAt, { confidence: analysis.riskScore / 100 });
     return { device, analysis, alert };
 };
 

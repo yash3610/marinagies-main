@@ -15,6 +15,7 @@ const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 const { distanceKm } = require("./sarVerify.service");
 const { inferActiveModel } = require("./mlRuntime.service");
 const { runtimeFeatures } = require("./mlTraining.service");
+const { observeOperation } = require("./observability.service");
 
 const WEIGHTS = Object.freeze({ routeDeviation: 0.30, operatorPattern: 0.25, environmentalContext: 0.20, timeAnomaly: 0.10, sequenceAnomaly: 0.10, authorityCheck: 0.05 });
 const COMMAND_TYPES = Object.freeze(["SET_HEADING", "SET_SPEED", "CHANGE_ROUTE", "STOP_ENGINE", "EMERGENCY_STOP", "RETURN_TO_PORT", "ENTER_SAFE_MODE"]);
@@ -211,6 +212,7 @@ const interceptRemoteCommand = async ({ input, operatorId, operatorRole, io }) =
     emitVesselEvent(io, "rocshield:command", populated, vessel._id);
     writeAuditLog({ user: operatorId, actorRole: operatorRole, vessel: vessel._id, action: `REMOTE_COMMAND_${command.decision}`, resource: "REMOTE_COMMAND", resourceId: String(command._id), description: command.explanation.whatCausedIt, metadata: { commandId: command.commandId, type, riskScore: command.riskScore, decision: command.decision, outcome: command.outcome } }).catch((error) => console.error("ROCShield audit error:", error.message));
     if (command.decision === "BLOCK") publishIndicator({ type: "COMMAND_SIGNATURE", value: `${command.type}:${command.operatorRole}`, sourceModule: "ROCSHIELD", sourceRef: { model: "RemoteCommand", id: String(command._id) }, discoveryVessel: vessel._id, severity: command.riskPercent >= 90 ? "CRITICAL" : "HIGH", confidence: command.riskPercent, reason: command.explanation.whatCausedIt, extractedVector: { type: command.type, role: command.operatorRole, decision: command.decision } }, io).catch((error) => console.error("ROCShield intelligence publish error:", error.message));
+    observeOperation("rocshield_command_risk", Date.now() - startedAt, { confidence: command.riskScore });
     return populated;
 };
 

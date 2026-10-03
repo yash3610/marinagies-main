@@ -51,6 +51,7 @@ const PERMISSIONS = Object.freeze({
     AUDIT_LOGS_VIEW: "audit-logs:view",
     USERS_MANAGE: "users:manage",
     SETTINGS_VIEW: "settings:view",
+    OBSERVABILITY_VIEW: "observability:view",
 });
 
 const ROLE_ALIASES = Object.freeze({
@@ -105,6 +106,7 @@ const ROLE_PERMISSIONS = Object.freeze({
         PERMISSIONS.REPORTS_VIEW,
         PERMISSIONS.REPORTS_EXPORT,
         PERMISSIONS.AUDIT_LOGS_VIEW,
+        PERMISSIONS.OBSERVABILITY_VIEW,
         PERMISSIONS.SAR_VERIFY_VIEW,
         PERMISSIONS.SAR_VERIFY_MANAGE,
         PERMISSIONS.COMMANDS_VIEW,
@@ -151,6 +153,7 @@ const ROLE_PERMISSIONS = Object.freeze({
         PERMISSIONS.REPORTS_VIEW,
         PERMISSIONS.REPORTS_EXPORT,
         PERMISSIONS.AUDIT_LOGS_VIEW,
+        PERMISSIONS.OBSERVABILITY_VIEW,
     ],
     [ROLES.COMPLIANCE_AUDITOR]: [
         ...common,

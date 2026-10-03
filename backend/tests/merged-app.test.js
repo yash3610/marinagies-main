@@ -28,6 +28,8 @@ const { analyzeFileActivity, encryptPayload, decryptPayload } = require("../src/
 const { fingerprintFor } = require("../src/services/threatIntelligence.service");
 const { hashContent } = require("../src/services/compliance.service");
 const { generateDataset, trainLogisticRegression, evaluateArtifact, predictProbability } = require("../src/services/mlTraining.service");
+const { findDangerousKey } = require("../src/middleware/platform.middleware");
+const { observeOperation, snapshot: observabilitySnapshot, prometheus } = require("../src/services/observability.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -385,4 +387,22 @@ test("ML training uses reproducible labelled data and an unseen holdout evaluati
   assert.ok(metrics.recall>=0.85);
   assert.equal(metrics.confusionMatrix.truePositive+metrics.confusionMatrix.trueNegative+metrics.confusionMatrix.falsePositive+metrics.confusionMatrix.falseNegative,100);
   assert.ok(predictProbability(artifact,{deadReckoning:.95,impossibleSpeed:.9,physicalMotionMismatch:.95,aisCrossReference:.9,headingMismatch:.8,speedMismatch:.8})>predictProbability(artifact,{deadReckoning:.05,impossibleSpeed:.02,physicalMotionMismatch:.03,aisCrossReference:.04,headingMismatch:.08,speedMismatch:.05}));
+});
+
+test("platform hardening rejects operator injection and exports bounded metrics", () => {
+  assert.equal(findDangerousKey(JSON.parse('{"filter":{"$where":"sleep(1000)"}}')),"$where");
+  assert.equal(findDangerousKey(JSON.parse('{"__proto__":{"polluted":true}}')),"__proto__");
+  assert.equal(findDangerousKey({safe:{nested:"value"}}),null);
+  observeOperation("test_detection",12.5,{confidence:.82});
+  const metric=observabilitySnapshot().operations.find(item=>item.name==="test_detection");
+  assert.equal(metric.count,1);
+  assert.match(prometheus(),/marineaegis_operation_total\{name="test_detection"\} 1/);
+});
+
+test("core detection engines stay inside local performance budgets", () => {
+  const started=performance.now();
+  for(let index=0;index<1000;index+=1){
+    scoreRemoteCommand({input:{type:"SET_HEADING",parameters:{heading:index%360},issuedAt:new Date("2026-01-01T10:00:00Z"),channelAuthenticated:true},operatorRole:"ROC_OPERATOR",baseline:{totalCommands:20,commandTypeCounts:{SET_HEADING:10},hourCounts:{"10":5}},vesselState:{heading:90,speed:12,status:"ONLINE"},recentCommands:[]});
+  }
+  assert.ok(performance.now()-started<500,"1000 local ROCShield scores should complete within 500ms");
 });

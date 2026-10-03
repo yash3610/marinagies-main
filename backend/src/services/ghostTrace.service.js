@@ -11,6 +11,7 @@ const { recordTrustedPosition, proposeNavigationAction } = require("./navigation
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 const { inferActiveModel } = require("./mlRuntime.service");
 const { runtimeFeatures } = require("./mlTraining.service");
+const { observeOperation } = require("./observability.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const KNOT_TO_METERS_PER_SECOND = 0.514444;
@@ -186,6 +187,7 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
 };
 
 const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io }) => {
+    const operationStartedAt = performance.now();
     const analysis = analyzeGhostTrace(telemetry.toObject ? telemetry.toObject() : telemetry, previousState);
     const mlInference = await inferActiveModel("GHOSTTRACE", runtimeFeatures.GHOSTTRACE(analysis), vessel._id);
     if (mlInference) {
@@ -206,6 +208,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
             vesselId: vessel._id,
             reason: "GhostTrace multi-sensor score remained below the alert threshold",
         });
+        observeOperation("ghosttrace_detection", performance.now() - operationStartedAt, { confidence: analysis.confidenceScore });
         return { event, alert: null, incident: null, navigationAction: null };
     }
 
@@ -329,6 +332,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         metadata: { confidence, severity, alertId: alert?.alertId },
     }).catch((error) => console.error("GhostTrace audit error:", error.message));
     if (event.confidenceLevel === "HIGH") publishIndicator({ type: "GPS_SPOOFING", value: `${event.alertType}:${Number(event.confidenceScore).toFixed(2)}`, sourceModule: "GHOSTTRACE", sourceRef: { model: "GhostTraceEvent", id: String(event._id) }, discoveryVessel: vessel._id, severity: severity === "CRITICAL" ? "CRITICAL" : "HIGH", confidence, reason: analysis.explanation.whatCausedIt, extractedVector: { alertType: event.alertType, anomalyScores: event.anomalyScores } }, io).catch((error) => console.error("GhostTrace intelligence publish error:", error.message));
+    observeOperation("ghosttrace_detection", performance.now() - operationStartedAt, { confidence: analysis.confidenceScore });
     return { event, alert, incident, navigationAction };
 };
 
