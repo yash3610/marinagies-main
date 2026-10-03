@@ -10,6 +10,9 @@ const fleetModelSchema = new mongoose.Schema({
     patternFingerprints: [{ type: String, trim: true }],
     patternCount: { type: Number, min: 0, default: 0 },
     artifactHash: { type: String, required: true, lowercase: true },
+    artifact: { type: mongoose.Schema.Types.Mixed, default: null },
+    modelCard: { type: mongoose.Schema.Types.Mixed, default: null },
+    trainingRun: { type: mongoose.Schema.Types.ObjectId, ref: "MLTrainingRun", default: null },
     validation: {
         precision: { type: Number, min: 0, max: 1, default: null },
         recall: { type: Number, min: 0, max: 1, default: null },

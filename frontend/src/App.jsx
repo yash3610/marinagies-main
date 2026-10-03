@@ -24,6 +24,7 @@ import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
 import AttackSimulation from "./pages/AttackSimulation";
 import IntelligenceCenter from "./pages/IntelligenceCenter";
+import MLLab from "./pages/MLLab";
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="rocshield" element={permitted("commands:view", <ROCShield />)} />
         <Route path="recovery" element={permitted("recovery:view", <RecoveryShield />)} />
         <Route path="intelligence" element={permitted("threat-intelligence:view", <IntelligenceCenter />)} />
+        <Route path="ml-lab" element={permitted("fleet-learning:view", <MLLab />)} />
         <Route path="users" element={permitted("users:manage", <Users />)} />
         <Route path="settings" element={permitted("settings:view", <Settings />)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />

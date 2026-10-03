@@ -25,6 +25,7 @@ const edgeDeviceSchema = new mongoose.Schema({
         batteryLevel: { type: Number, min: 0, max: 100, default: 100 },
         temperature: { type: Number, default: null },
         evaluatedAt: { type: Date, default: Date.now },
+        mlInference: { type: mongoose.Schema.Types.Mixed, default: null },
     },
     lastTelemetry: { type: mongoose.Schema.Types.ObjectId, ref: "Telemetry", default: null },
     lastHeartbeatAt: { type: Date, default: null, index: true },

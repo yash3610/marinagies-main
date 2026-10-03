@@ -45,6 +45,7 @@ const operations = [
     { label: "ROCShield", path: "/dashboard/rocshield", icon: RadioTower, permission: "commands:view" },
     { label: "RecoveryShield", path: "/dashboard/recovery", icon: DatabaseBackup, permission: "recovery:view" },
     { label: "Intelligence Center", path: "/dashboard/intelligence", icon: BrainCircuit, permission: "threat-intelligence:view" },
+    { label: "ML Training Lab", path: "/dashboard/ml-lab", icon: BrainCircuit, permission: "fleet-learning:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

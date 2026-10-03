@@ -4,6 +4,7 @@ const VesselModelDeployment = require("../models/VesselModelDeployment");
 const UnifiedThreatIndicator = require("../models/UnifiedThreatIndicator");
 const Vessel = require("../models/Vessel");
 const { writeAuditLog } = require("./audit.service");
+const { clearModelCache } = require("./mlRuntime.service");
 
 const MODULE_TYPES = { GHOSTTRACE: ["GPS_SPOOFING"], NETGUARD: ["DOMAIN", "IP"], AGENTWATCH: ["ATTACK_PATTERN"], EDGEARMOR: ["DEVICE_COMPROMISE"], SARVERIFY: ["FALSE_DISTRESS"], ROCSHIELD: ["COMMAND_SIGNATURE"], RECOVERYSHIELD: ["RANSOMWARE_SIGNATURE"] };
 
@@ -39,6 +40,7 @@ const activateModel = async ({ model, actor }) => {
     if (!model || model.status !== "VALIDATED") throw Object.assign(new Error("Model must pass precision >= 0.90 and recall >= 0.85 before activation"), { status: 409 });
     await FleetModel.updateMany({ modelKey: model.modelKey, status: "ACTIVE" }, { $set: { status: "RETIRED" } });
     model.status = "ACTIVE"; model.activatedBy = actor; model.activatedAt = new Date(); await model.save();
+    clearModelCache();
     const vessels = await Vessel.find({ isActive: true }).select("_id status").lean();
     for (const vessel of vessels) {
         const current = await VesselModelDeployment.findOne({ vessel: vessel._id, modelKey: model.modelKey });
@@ -48,12 +50,17 @@ const activateModel = async ({ model, actor }) => {
     return model;
 };
 
-const syncVesselModels = async (vesselId) => VesselModelDeployment.updateMany({ vessel: vesselId, status: "PENDING" }, [{ $set: { previousVersion: "$currentVersion", currentVersion: "$targetVersion", status: "APPLIED", appliedAt: new Date(), lastSyncAt: new Date(), error: "" } }]);
+const syncVesselModels = async (vesselId) => {
+    const result = await VesselModelDeployment.updateMany({ vessel: vesselId, status: "PENDING" }, [{ $set: { previousVersion: "$currentVersion", currentVersion: "$targetVersion", status: "APPLIED", appliedAt: new Date(), lastSyncAt: new Date(), error: "" } }]);
+    clearModelCache();
+    return result;
+};
 
 const rollbackDeployment = async ({ deployment, actor }) => {
     if (!deployment?.previousVersion) throw Object.assign(new Error("No previous version is available for rollback"), { status: 409 });
     const replaced = deployment.currentVersion;
     deployment.currentVersion = deployment.previousVersion; deployment.previousVersion = replaced; deployment.targetVersion = deployment.currentVersion; deployment.status = "ROLLED_BACK"; deployment.appliedAt = new Date(); deployment.lastSyncAt = new Date(); await deployment.save();
+    clearModelCache();
     await writeAuditLog({ user: actor, actorRole: "FLEET_LEARNING_OPERATOR", vessel: deployment.vessel, action: "FLEET_MODEL_ROLLED_BACK", resource: "VESSEL_MODEL_DEPLOYMENT", resourceId: String(deployment._id), description: `${deployment.modelKey} rolled back from v${replaced} to v${deployment.currentVersion}` });
     return deployment;
 };

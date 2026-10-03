@@ -13,6 +13,8 @@ const { writeAuditLog } = require("./audit.service");
 const { publishIndicator } = require("./threatIntelligence.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 const { distanceKm } = require("./sarVerify.service");
+const { inferActiveModel } = require("./mlRuntime.service");
+const { runtimeFeatures } = require("./mlTraining.service");
 
 const WEIGHTS = Object.freeze({ routeDeviation: 0.30, operatorPattern: 0.25, environmentalContext: 0.20, timeAnomaly: 0.10, sequenceAnomaly: 0.10, authorityCheck: 0.05 });
 const COMMAND_TYPES = Object.freeze(["SET_HEADING", "SET_SPEED", "CHANGE_ROUTE", "STOP_ENGINE", "EMERGENCY_STOP", "RETURN_TO_PORT", "ENTER_SAFE_MODE"]);
@@ -179,9 +181,19 @@ const interceptRemoteCommand = async ({ input, operatorId, operatorRole, io }) =
         ? weatherRows.map((row) => ({ row, distance: distanceKm(vesselLocation, row.center) })).filter((item) => item.distance <= item.row.radiusKm).sort((a, b) => a.distance - b.distance)[0]?.row || null
         : null;
     const result = scoreRemoteCommand({ input: { ...input, type, issuedAt }, operatorRole, baseline, vesselState, weather, recentCommands });
+    const mlInference = await inferActiveModel("ROCSHIELD", runtimeFeatures.ROCSHIELD(result), vessel._id);
+    if (mlInference) {
+        result.riskScore = Math.max(result.riskScore, Number(mlInference.probability.toFixed(3)));
+        result.riskPercent = Math.round(result.riskScore * 100);
+        const authorized = result.riskFactors.authorityCheck.score === 0;
+        result.decision = !authorized || result.riskScore >= 0.7 ? "BLOCK" : result.riskScore > 0.3 ? "HOLD" : "AUTO_EXECUTE";
+        result.status = result.decision === "AUTO_EXECUTE" ? "INTERCEPTED" : result.decision === "HOLD" ? "PENDING_APPROVAL" : "BLOCKED";
+        result.requiresMfa = result.decision !== "AUTO_EXECUTE";
+        result.explanation.whatCausedIt += ` Active ${mlInference.modelKey} v${mlInference.version} produced ${(mlInference.probability * 100).toFixed(1)}% unsafe-command probability.`;
+    }
     let command;
     try {
-        command = await RemoteCommand.create({ commandId: input.commandId || `ROC-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, nonce: input.nonce, vessel: vessel._id, operator: operatorId, operatorRole, type, parameters: input.parameters || {}, issuedAt, offlineMode: true, contextSnapshot: { vesselState: { heading: vesselState.heading, speed: vesselState.speed, status: vesselState.status, destination: vesselState.destination }, weather, baseline: baseline || null }, ...result, processingTimeMs: Date.now() - startedAt, simulated: Boolean(input.simulated) });
+        command = await RemoteCommand.create({ commandId: input.commandId || `ROC-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, nonce: input.nonce, vessel: vessel._id, operator: operatorId, operatorRole, type, parameters: input.parameters || {}, issuedAt, offlineMode: true, contextSnapshot: { vesselState: { heading: vesselState.heading, speed: vesselState.speed, status: vesselState.status, destination: vesselState.destination }, weather, baseline: baseline || null, mlInference }, ...result, processingTimeMs: Date.now() - startedAt, simulated: Boolean(input.simulated) });
     } catch (error) {
         if (error?.code === 11000) throw Object.assign(new Error("Duplicate command or nonce rejected as a replay"), { status: 409 });
         throw error;

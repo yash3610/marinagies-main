@@ -16,6 +16,7 @@ const attackSequenceSchema = new mongoose.Schema({
     confidenceLevel: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], required: true },
     classification: { type: String, enum: ["INCOMPLETE", "HUMAN_PACED", "AUTONOMOUS_SUSPECTED"], required: true },
     mitreTechniques: [{ techniqueId: String, name: String, stage: String }],
+    mlInference: { type: mongoose.Schema.Types.Mixed, default: null },
     explanation: {
         whatHappened: { type: String, required: true },
         whyItMatters: { type: String, required: true },

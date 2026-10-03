@@ -9,6 +9,8 @@ const Vessel = require("../models/Vessel");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
+const { inferActiveModel } = require("./mlRuntime.service");
+const { runtimeFeatures } = require("./mlTraining.service");
 
 const STAGE_ORDER = ["RECON", "CREDENTIAL_ATTACK", "LATERAL_MOVEMENT", "EXFILTRATION"];
 const KIND_TO_STAGE = {
@@ -110,6 +112,7 @@ const createSequenceResponse = async ({ analysis, vessel, sourceIp, sourceDevice
         startAt: analysis.startAt, endAt: analysis.endAt, durationMs: analysis.durationMs,
         medianIntervalMs: analysis.medianIntervalMs, confidence: analysis.confidence,
         confidenceLevel: analysis.confidenceLevel, classification: analysis.classification,
+        mlInference: analysis.mlInference || null,
         mitreTechniques: analysis.mitreTechniques, explanation: analysis.explanation,
     });
     if (analysis.confidenceLevel === "HIGH") {
@@ -183,6 +186,16 @@ const ingestAgentWatchEvent = async (input, io) => {
         vessel: vessel._id, sourceIp, timestamp: { $gte: new Date(new Date(event.timestamp).getTime() - 30 * 60 * 1000), $lte: event.timestamp },
     }).sort({ timestamp: 1 }).limit(100).lean();
     const analysis = analyzeAttackSequence(candidateEvents);
+    if (analysis) {
+        const mlInference = await inferActiveModel("AGENTWATCH", runtimeFeatures.AGENTWATCH(analysis), vessel._id);
+        if (mlInference) {
+            analysis.mlInference = mlInference;
+            analysis.confidence = Math.max(analysis.confidence, Math.round(mlInference.probability * 100));
+            analysis.confidenceLevel = analysis.confidence >= 80 ? "HIGH" : analysis.confidence >= 55 ? "MEDIUM" : "LOW";
+            if (mlInference.probability >= 0.7 && analysis.stages.length >= 3) analysis.classification = "AUTONOMOUS_SUSPECTED";
+            analysis.explanation.whatCausedIt += ` Active ${mlInference.modelKey} v${mlInference.version} produced ${(mlInference.probability * 100).toFixed(1)}% autonomous-attack probability.`;
+        }
+    }
     const sequence = analysis && analysis.events.length >= 5
         ? await createSequenceResponse({ analysis, vessel, sourceIp, sourceDevice: event.sourceDevice, io })
         : null;

@@ -27,6 +27,7 @@ const { generateSecret, generateTotp, verifyTotp } = require("../src/services/to
 const { analyzeFileActivity, encryptPayload, decryptPayload } = require("../src/services/recoveryShield.service");
 const { fingerprintFor } = require("../src/services/threatIntelligence.service");
 const { hashContent } = require("../src/services/compliance.service");
+const { generateDataset, trainLogisticRegression, evaluateArtifact, predictProbability } = require("../src/services/mlTraining.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -370,4 +371,18 @@ test("Compliance evidence hashes are deterministic and role permissions remain l
   assert.ok(getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.THREAT_INTELLIGENCE_VIEW));
   assert.ok(!getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.THREAT_INTELLIGENCE_MANAGE));
   assert.ok(getPermissionsForRole("FLEET_MANAGER").includes(PERMISSIONS.FLEET_LEARNING_MANAGE));
+});
+
+test("ML training uses reproducible labelled data and an unseen holdout evaluation", () => {
+  const first=generateDataset({module:"GHOSTTRACE",sampleCount:400,seed:2026});
+  const second=generateDataset({module:"GHOSTTRACE",sampleCount:400,seed:2026});
+  assert.equal(first.hash,second.hash);
+  assert.equal(first.rows.length,400);
+  const split=300;
+  const artifact=trainLogisticRegression({rows:first.rows.slice(0,split),featureNames:first.featureNames});
+  const metrics=evaluateArtifact(artifact,first.rows.slice(split));
+  assert.ok(metrics.precision>=0.9);
+  assert.ok(metrics.recall>=0.85);
+  assert.equal(metrics.confusionMatrix.truePositive+metrics.confusionMatrix.trueNegative+metrics.confusionMatrix.falsePositive+metrics.confusionMatrix.falseNegative,100);
+  assert.ok(predictProbability(artifact,{deadReckoning:.95,impossibleSpeed:.9,physicalMotionMismatch:.95,aisCrossReference:.9,headingMismatch:.8,speedMismatch:.8})>predictProbability(artifact,{deadReckoning:.05,impossibleSpeed:.02,physicalMotionMismatch:.03,aisCrossReference:.04,headingMismatch:.08,speedMismatch:.05}));
 });

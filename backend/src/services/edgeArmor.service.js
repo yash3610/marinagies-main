@@ -5,6 +5,8 @@ const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
 const { publishIndicator } = require("./threatIntelligence.service");
 const { syncEdgeDeviceAsset } = require("./fleetChoke.service");
+const { inferActiveModel } = require("./mlRuntime.service");
+const { runtimeFeatures } = require("./mlTraining.service");
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 const riskLevelFor = (score) => score >= 80 ? "CRITICAL" : score >= 50 ? "HIGH" : score >= 20 ? "MEDIUM" : "LOW";
@@ -96,7 +98,7 @@ const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
     const actualFirmware = telemetry.sensorNode?.firmwareVersion || existing?.reportedFirmware || "unknown";
     const reportedFirmware = activeFault === "FIRMWARE_TAMPER" ? "unapproved-demo-build" : actualFirmware;
     const approvedFirmware = existing?.approvedFirmware || reportedFirmware;
-    const analysis = evaluateDeviceHealth({
+    const healthInput = {
         deviceStatus: activeFault === "HEARTBEAT_LOSS" ? "OFFLINE" : activeFault ? "WARNING" : telemetry.deviceStatus,
         signalStrength: activeFault === "LOW_SIGNAL" || activeFault === "HEARTBEAT_LOSS" ? (activeFault === "LOW_SIGNAL" ? 8 : 0) : telemetry.gpsSignal,
         temperature: activeFault === "HIGH_TEMPERATURE" ? 82 : telemetry.motion?.temperature,
@@ -104,7 +106,17 @@ const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
         approvedFirmware,
         identityMismatch,
         heartbeatAgeSeconds: activeFault === "HEARTBEAT_LOSS" ? 180 : 0,
-    });
+    };
+    const analysis = evaluateDeviceHealth(healthInput);
+    const mlInference = await inferActiveModel("EDGEARMOR", runtimeFeatures.EDGEARMOR(healthInput), existing?.vessel || vessel._id);
+    if (mlInference) {
+        analysis.mlInference = mlInference;
+        analysis.riskScore = Math.max(analysis.riskScore, Math.round(mlInference.probability * 100));
+        analysis.healthScore = 100 - analysis.riskScore;
+        analysis.riskLevel = riskLevelFor(analysis.riskScore);
+        analysis.effectiveStatus = analysis.riskScore >= 50 ? "OFFLINE" : analysis.riskScore >= 20 ? "WARNING" : "ONLINE";
+        analysis.reasons.push(`${mlInference.modelKey} v${mlInference.version} estimated ${(mlInference.probability * 100).toFixed(1)}% compromise probability.`);
+    }
     const targetVessel = existing?.vessel || vessel._id;
     const device = await EdgeDevice.findOneAndUpdate(
         { deviceId },
@@ -126,6 +138,7 @@ const processEdgeArmorTelemetry = async ({ telemetry, vessel, io }) => {
                 "health.signalStrength": activeFault === "LOW_SIGNAL" || activeFault === "HEARTBEAT_LOSS" ? (activeFault === "LOW_SIGNAL" ? 8 : 0) : telemetry.gpsSignal,
                 "health.temperature": activeFault === "HIGH_TEMPERATURE" ? 82 : telemetry.motion?.temperature ?? null,
                 "health.evaluatedAt": new Date(),
+                "health.mlInference": analysis.mlInference || null,
                 ...(activeFault ? {} : { "mockFault.type": null, "mockFault.injectedAt": null, "mockFault.expiresAt": null }),
             },
             $inc: { heartbeatCount: 1 },

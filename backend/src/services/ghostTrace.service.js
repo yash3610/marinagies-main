@@ -9,6 +9,8 @@ const { writeAuditLog } = require("./audit.service");
 const { publishIndicator } = require("./threatIntelligence.service");
 const { recordTrustedPosition, proposeNavigationAction } = require("./navigationResponse.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
+const { inferActiveModel } = require("./mlRuntime.service");
+const { runtimeFeatures } = require("./mlTraining.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const KNOT_TO_METERS_PER_SECOND = 0.514444;
@@ -185,6 +187,14 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
 
 const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io }) => {
     const analysis = analyzeGhostTrace(telemetry.toObject ? telemetry.toObject() : telemetry, previousState);
+    const mlInference = await inferActiveModel("GHOSTTRACE", runtimeFeatures.GHOSTTRACE(analysis), vessel._id);
+    if (mlInference) {
+        analysis.signalsEvaluated.mlInference = mlInference;
+        analysis.confidenceScore = Number(Math.max(analysis.confidenceScore, mlInference.probability).toFixed(3));
+        analysis.detected = analysis.confidenceScore >= analysis.threshold;
+        analysis.confidenceLevel = analysis.confidenceScore >= 0.7 ? "HIGH" : analysis.confidenceScore >= 0.4 ? "MEDIUM" : "LOW";
+        analysis.explanation.whatCausedIt += ` Active ${mlInference.modelKey} v${mlInference.version} produced ${(mlInference.probability * 100).toFixed(1)}% anomaly probability.`;
+    }
     const event = await GhostTraceEvent.create({
         vessel: vessel._id,
         telemetry: telemetry._id,
