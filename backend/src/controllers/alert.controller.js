@@ -111,10 +111,12 @@ const updateAlert = async (req, res) => {
 
         alert.status = status;
 
-        if (status === "RESOLVED") {
+        if (status === "RESOLVED" || status === "FALSE_POSITIVE") {
             alert.resolvedAt = new Date();
+            alert.resolvedBy = req.user.userId;
         } else {
             alert.resolvedAt = null;
+            alert.resolvedBy = null;
         }
 
         await alert.save();

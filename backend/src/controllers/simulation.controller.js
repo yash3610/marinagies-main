@@ -89,6 +89,8 @@ const startVoyage = async (req, res) => {
                     },
                     attack: { type: "NONE", active: false, offsetLatitude: 0, offsetLongitude: 0, injectedAt: null },
                     hardware: { greenLed: true, redLed: false, buzzer: false },
+                    navigationSource: "GPS",
+                    safeMode: { active: false, enteredAt: null, enteredBy: null, reason: "" },
                     startedBy: req.user.userId,
                     startedAt: new Date(),
                     stoppedAt: null,

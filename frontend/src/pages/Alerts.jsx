@@ -10,7 +10,6 @@ import {
     ShieldAlert,
     Ship,
     X,
-    XCircle,
     Zap,
 } from "lucide-react";
 import api from "../services/api";
@@ -33,23 +32,21 @@ const Alerts = () => {
     // LOAD DATA
     // ========================================
 
-    const loadAlerts = async () => {
-        try {
-            const [alertsRes, vesselsRes] = await Promise.all([
-                api.get("/alerts"),
-                api.get("/vessels"),
-            ]);
-
-            setAlerts(alertsRes.data?.alerts || []);
-            setVessels(vesselsRes.data?.vessels || []);
-        } catch (error) {
-            console.error("Alerts loading error:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const loadAlerts = async () => {
+            try {
+                const [alertsRes, vesselsRes] = await Promise.all([
+                    api.get("/alerts"),
+                    api.get("/vessels"),
+                ]);
+                setAlerts(alertsRes.data?.alerts || []);
+                setVessels(vesselsRes.data?.vessels || []);
+            } catch (error) {
+                console.error("Alerts loading error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         loadAlerts();
     }, []);
 
@@ -169,7 +166,7 @@ const Alerts = () => {
             ).length,
 
             resolved: alerts.filter(
-                (item) => item.status === "RESOLVED"
+                (item) => ["RESOLVED", "FALSE_POSITIVE"].includes(item.status)
             ).length,
         };
     }, [alerts]);
@@ -389,6 +386,7 @@ const Alerts = () => {
                         <option value="RESOLVED">
                             Resolved
                         </option>
+                        <option value="FALSE_POSITIVE">False Positive</option>
                     </select>
 
                     {/* Vessel */}
@@ -566,6 +564,12 @@ const Alerts = () => {
                         updateAlertStatus(
                             selectedAlert._id,
                             "RESOLVED"
+                        )
+                    }
+                    onFalsePositive={() =>
+                        updateAlertStatus(
+                            selectedAlert._id,
+                            "FALSE_POSITIVE"
                         )
                     }
                     updating={
@@ -786,7 +790,7 @@ const AlertRow = ({
                         </button>
                     )}
 
-                    {alert.status !== "RESOLVED" && (
+                    {!["RESOLVED", "FALSE_POSITIVE"].includes(alert.status) && (
                         <button
                             onClick={onResolve}
                             disabled={updatingId === alert._id}
@@ -811,6 +815,7 @@ const AlertDetailsModal = ({
     onClose,
     onAcknowledge,
     onResolve,
+    onFalsePositive,
     updating,
     formatDate,
     formatType,
@@ -999,7 +1004,17 @@ const AlertDetailsModal = ({
                         </button>
                     )}
 
-                    {alert.status !== "RESOLVED" && (
+                    {!["RESOLVED", "FALSE_POSITIVE"].includes(alert.status) && (
+                        <button
+                            onClick={onFalsePositive}
+                            disabled={updating}
+                            className="rounded-lg border border-slate-600 bg-slate-800/60 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+                        >
+                            Mark False Positive
+                        </button>
+                    )}
+
+                    {!["RESOLVED", "FALSE_POSITIVE"].includes(alert.status) && (
                         <button
                             onClick={onResolve}
                             disabled={updating}
@@ -1082,6 +1097,11 @@ const StatusBadge = ({ status }) => {
             text: "text-emerald-400",
             bg: "bg-emerald-400/10",
             border: "border-emerald-400/20",
+        },
+        FALSE_POSITIVE: {
+            text: "text-slate-300",
+            bg: "bg-slate-500/10",
+            border: "border-slate-500/20",
         },
     };
 

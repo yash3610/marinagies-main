@@ -5,6 +5,7 @@ const ghostTraceEventSchema = new mongoose.Schema({
     telemetry: { type: mongoose.Schema.Types.ObjectId, ref: "Telemetry", required: true, unique: true },
     alert: { type: mongoose.Schema.Types.ObjectId, ref: "Alert", default: null },
     incident: { type: mongoose.Schema.Types.ObjectId, ref: "Incident", default: null },
+    navigationAction: { type: mongoose.Schema.Types.ObjectId, ref: "NavigationAction", default: null },
     detected: { type: Boolean, required: true, index: true },
     confidenceScore: { type: Number, required: true, min: 0, max: 1 },
     confidenceLevel: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], required: true },

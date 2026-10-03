@@ -14,18 +14,53 @@ import {
     Waves,
     Wifi,
     Zap,
+    CheckCircle2,
+    XCircle,
+    FlaskConical,
+    LockKeyhole,
 } from "lucide-react";
 import { createSocket } from "../services/socket";
 import api from "../services/api";
+import { useAuth } from "../hooks/useAuth";
 
 
 const DigitalTwin = () => {
+    const { hasPermission } = useAuth();
+    const canDecide = hasPermission("navigation-actions:manage");
     const [vessels, setVessels] = useState([]);
     const [telemetry, setTelemetry] = useState([]);
+    const [actions, setActions] = useState([]);
+    const [sessions, setSessions] = useState([]);
     const [selectedId, setSelectedId] = useState("");
     const [loading, setLoading] = useState(true);
+    const [actionBusy, setActionBusy] = useState(false);
+    const [actionMessage, setActionMessage] = useState("");
 
     useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [vesselRes, telemetryRes, actionRes, sessionRes] = await Promise.all([
+                    api.get("/vessels"),
+                    api.get("/telemetry"),
+                    api.get("/navigation-actions"),
+                    api.get("/attack-simulation"),
+                ]);
+                const vesselData = vesselRes.data?.vessels || [];
+                const telemetryData = telemetryRes.data?.data || [];
+                setVessels(vesselData);
+                setActions(actionRes.data?.actions || []);
+                setSessions(sessionRes.data?.sessions || []);
+                setTelemetry(telemetryData.map((item) => ({
+                    vessel: item.vessel,
+                    telemetry: item.telemetry || item,
+                })));
+                if (vesselData.length > 0) setSelectedId(vesselData[0]._id);
+            } catch (error) {
+                console.error("Digital Twin loading error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         loadData();
 
         const socket = createSocket();
@@ -38,50 +73,26 @@ const DigitalTwin = () => {
                 telemetry: item.telemetry || item,
             }));
 
-            setTelemetry(incoming);
+            setTelemetry((current) => {
+                const merged = new Map(current.map((item) => [String(item.vessel?._id || item.vessel), item]));
+                incoming.forEach((item) => merged.set(String(item.vessel?._id || item.vessel), item));
+                return [...merged.values()];
+            });
+        });
+
+        socket.on("navigation-action:update", (action) => {
+            setActions((current) => [action, ...current.filter((item) => item._id !== action._id)]);
+        });
+
+        socket.on("simulation:update", (session) => {
+            const vesselId = String(session?.vessel?._id || session?.vessel);
+            setSessions((current) => [session, ...current.filter((item) => String(item.vessel?._id || item.vessel) !== vesselId)]);
         });
 
         return () => {
             socket.disconnect();
         };
     }, []);
-
-    const loadData = async () => {
-        try {
-            const [vesselRes, telemetryRes] =
-                await Promise.all([
-                    api.get("/vessels"),
-                    api.get("/telemetry"),
-                ]);
-
-            const vesselData =
-                vesselRes.data?.vessels || [];
-
-            const telemetryData =
-                telemetryRes.data?.data || [];
-
-            setVessels(vesselData);
-
-            setTelemetry(
-                telemetryData.map((item) => ({
-                    vessel: item.vessel,
-                    telemetry:
-                        item.telemetry || item,
-                }))
-            );
-
-            if (vesselData.length > 0) {
-                setSelectedId(vesselData[0]._id);
-            }
-        } catch (error) {
-            console.error(
-                "Digital Twin loading error:",
-                error
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const selectedVessel = useMemo(
         () =>
@@ -100,6 +111,69 @@ const DigitalTwin = () => {
 
         return record?.telemetry || null;
     }, [telemetry, selectedId]);
+
+    const selectedAction = useMemo(() => actions.find((action) =>
+        String(action.vessel?._id || action.vessel) === String(selectedId)
+    ) || null, [actions, selectedId]);
+
+    const selectedSession = useMemo(() => sessions.find((session) =>
+        String(session.vessel?._id || session.vessel) === String(selectedId)
+    ) || null, [sessions, selectedId]);
+
+    const runAction = async (operation) => {
+        if (!selectedAction) return;
+        setActionBusy(true);
+        setActionMessage("");
+        try {
+            const response = await api.post(`/navigation-actions/${selectedAction._id}/${operation}`, {});
+            const updated = response.data?.action;
+            if (updated) setActions((current) => [updated, ...current.filter((item) => item._id !== updated._id)]);
+            if (response.data?.session) {
+                const nextSession = response.data.session;
+                setSessions((current) => [nextSession, ...current.filter((item) => String(item.vessel?._id || item.vessel) !== String(selectedId))]);
+            }
+            setActionMessage(response.data?.message || "Action updated");
+        } catch (error) {
+            setActionMessage(error.response?.data?.message || "Action failed");
+        } finally {
+            setActionBusy(false);
+        }
+    }
+
+    const exitSafeMode = async () => {
+        setActionBusy(true);
+        setActionMessage("");
+        try {
+            const response = await api.post("/navigation-actions/safe-mode/exit", { vessel: selectedId });
+            const nextSession = response.data?.session;
+            if (nextSession) setSessions((current) => [nextSession, ...current.filter((item) => String(item.vessel?._id || item.vessel) !== String(selectedId))]);
+            setActionMessage(response.data?.message || "Safe Mode exited");
+        } catch (error) {
+            setActionMessage(error.response?.data?.message || "Failed to exit Safe Mode");
+        } finally {
+            setActionBusy(false);
+        }
+    };
+
+    const trustCurrentPosition = async () => {
+        setActionBusy(true);
+        setActionMessage("");
+        try {
+            const response = await api.post("/navigation-actions/trusted-position", {
+                vessel: selectedId,
+                latitude: selectedTelemetry?.navigationReference?.aisLatitude ?? selectedTelemetry?.latitude,
+                longitude: selectedTelemetry?.navigationReference?.aisLongitude ?? selectedTelemetry?.longitude,
+                speed: selectedTelemetry?.navigationReference?.simulatedSpeed ?? selectedTelemetry?.speed,
+                heading: selectedTelemetry?.navigationReference?.gyroHeading ?? selectedTelemetry?.heading,
+                reason: "Bridge officer verified the independent AIS/physical position",
+            });
+            setActionMessage(response.data?.message || "Trusted position saved");
+        } catch (error) {
+            setActionMessage(error.response?.data?.message || "Failed to save trusted position");
+        } finally {
+            setActionBusy(false);
+        }
+    };
 
     const getValue = (
         telemetryKey,
@@ -190,6 +264,93 @@ const DigitalTwin = () => {
                         ))}
                     </div>
                 </div>
+            </div>
+
+            <div className="rounded-xl border border-cyan-400/15 bg-slate-950/80 p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <FlaskConical className="h-5 w-5 text-cyan-400" />
+                            <h2 className="font-semibold text-white">Navigation Response Safety Gate</h2>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Corrective navigation actions must pass the Digital Twin and receive human approval.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${selectedSession?.safeMode?.active ? "bg-amber-500/10 text-amber-300" : "bg-slate-800 text-slate-400"}`}>
+                            SAFE MODE {selectedSession?.safeMode?.active ? "ACTIVE" : "OFF"}
+                        </span>
+                        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
+                            SOURCE: {selectedSession?.navigationSource || "GPS"}
+                        </span>
+                        <button
+                            disabled={!canDecide || actionBusy || !selectedTelemetry}
+                            onClick={trustCurrentPosition}
+                            className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 disabled:opacity-40"
+                        >
+                            Trust AIS / Physical Position
+                        </button>
+                    </div>
+                </div>
+
+                {actionMessage && <p className="mt-4 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">{actionMessage}</p>}
+
+                {!selectedAction ? (
+                    <div className="mt-5 rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-500">
+                        No corrective action is pending. GhostTrace will create one automatically after a confirmed navigation anomaly.
+                    </div>
+                ) : (
+                    <div className="mt-5 space-y-4">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <TwinMetric label="Action" value={selectedAction.type?.replaceAll("_", " ")} />
+                            <TwinMetric label="Workflow status" value={selectedAction.status} />
+                            <TwinMetric label="Twin result" value={selectedAction.digitalTwin?.result || "NOT RUN"} />
+                            <TwinMetric label="Correction distance" value={`${selectedAction.digitalTwin?.checks?.correctionDistanceMeters ?? "--"} m`} />
+                        </div>
+
+                        <div className={`rounded-lg border p-4 ${selectedAction.digitalTwin?.result === "SAFE" ? "border-emerald-500/25 bg-emerald-500/5" : selectedAction.digitalTwin?.result === "UNSAFE" ? "border-red-500/25 bg-red-500/5" : "border-slate-800 bg-slate-900/50"}`}>
+                            <div className="flex items-start gap-3">
+                                {selectedAction.digitalTwin?.result === "SAFE"
+                                    ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
+                                    : <LockKeyhole className="mt-0.5 h-5 w-5 text-amber-400" />}
+                                <div>
+                                    <p className="text-sm font-semibold text-white">{selectedAction.reason}</p>
+                                    <p className="mt-2 text-xs leading-5 text-slate-400">{selectedAction.digitalTwin?.summary || "Run the Digital Twin before making a decision."}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <TwinMetric label="Last trusted position" value={`${Number(selectedAction.trustedPosition?.latitude).toFixed(5)}, ${Number(selectedAction.trustedPosition?.longitude).toFixed(5)}`} />
+                            <TwinMetric label="Suspicious GPS position" value={`${Number(selectedAction.suspiciousPosition?.latitude).toFixed(5)}, ${Number(selectedAction.suspiciousPosition?.longitude).toFixed(5)}`} />
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            {(["PROPOSED", "FAILED"].includes(selectedAction.status)) && (
+                                <button disabled={!canDecide || actionBusy} onClick={() => runAction("simulate")} className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-300 disabled:opacity-40">
+                                    Run Digital Twin
+                                </button>
+                            )}
+                            {selectedAction.status === "AWAITING_APPROVAL" && (
+                                <button disabled={!canDecide || actionBusy || selectedAction.digitalTwin?.result !== "SAFE"} onClick={() => runAction("approve")} className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300 disabled:opacity-40">
+                                    <CheckCircle2 className="h-4 w-4" /> Approve & Apply Safe Mode
+                                </button>
+                            )}
+                            {["PROPOSED", "AWAITING_APPROVAL"].includes(selectedAction.status) && (
+                                <button disabled={!canDecide || actionBusy} onClick={() => runAction("reject")} className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-300 disabled:opacity-40">
+                                    <XCircle className="h-4 w-4" /> Reject
+                                </button>
+                            )}
+                            {selectedSession?.safeMode?.active && (
+                                <button disabled={!canDecide || actionBusy} onClick={exitSafeMode} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-300 disabled:opacity-40">
+                                    Exit Safe Mode
+                                </button>
+                            )}
+                        </div>
+                        {!canDecide && <p className="text-xs text-amber-300">Your role has read-only access. An authorized bridge/ROC operator must decide.</p>}
+                    </div>
+                )}
             </div>
 
             {!selectedVessel ? (
@@ -825,6 +986,13 @@ const TelemetryCard = ({
         </div>
     );
 };
+
+const TwinMetric = ({ label, value }) => (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <p className="text-[9px] uppercase tracking-wider text-slate-600">{label}</p>
+        <p className="mt-2 text-xs font-semibold text-slate-200">{value || "--"}</p>
+    </div>
+);
 
 // ========================================
 // HEALTH ROW

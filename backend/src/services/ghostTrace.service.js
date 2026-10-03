@@ -6,6 +6,7 @@ const GhostTraceEvent = require("../models/GhostTraceEvent");
 const SimulationSession = require("../models/SimulationSession");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { recordTrustedPosition, proposeNavigationAction } = require("./navigationResponse.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const KNOT_TO_METERS_PER_SECOND = 0.514444;
@@ -187,7 +188,14 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         telemetry: telemetry._id,
         ...analysis,
     });
-    if (!analysis.detected) return { event, alert: null, incident: null };
+    if (!analysis.detected) {
+        await recordTrustedPosition({
+            telemetry,
+            vesselId: vessel._id,
+            reason: "GhostTrace multi-sensor score remained below the alert threshold",
+        });
+        return { event, alert: null, incident: null, navigationAction: null };
+    }
 
     const confidence = Math.round(analysis.confidenceScore * 100);
     const severity = confidence >= 90 ? "CRITICAL" : confidence >= 80 ? "HIGH" : "MEDIUM";
@@ -254,6 +262,12 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         $max: { riskScore: confidence },
         $set: { riskLevel: severity === "CRITICAL" ? "CRITICAL" : severity },
     });
+    const navigationAction = await proposeNavigationAction({ vessel, telemetry, event, alert, incident });
+    if (navigationAction) {
+        event.navigationAction = navigationAction._id;
+        await event.save();
+        emitVesselEvent(io, "navigation-action:update", navigationAction, vessel._id);
+    }
     writeAuditLog({
         actorRole: "GHOSTTRACE_ENGINE",
         vessel: vessel._id,
@@ -263,7 +277,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         description: analysis.explanation.whatCausedIt,
         metadata: { confidence, severity, alertId: alert?.alertId },
     }).catch((error) => console.error("GhostTrace audit error:", error.message));
-    return { event, alert, incident };
+    return { event, alert, incident, navigationAction };
 };
 
 module.exports = { haversineMeters, analyzeGhostTrace, processGhostTraceDetection };

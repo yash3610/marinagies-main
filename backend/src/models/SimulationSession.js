@@ -33,6 +33,13 @@ const simulationSessionSchema = new mongoose.Schema({
         redLed: { type: Boolean, default: false },
         buzzer: { type: Boolean, default: false },
     },
+    navigationSource: { type: String, enum: ["GPS", "TRUSTED_POSITION"], default: "GPS" },
+    safeMode: {
+        active: { type: Boolean, default: false },
+        enteredAt: { type: Date, default: null },
+        enteredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        reason: { type: String, trim: true, default: "" },
+    },
     startedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     startedAt: { type: Date, default: null },
     stoppedAt: { type: Date, default: null },

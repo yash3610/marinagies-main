@@ -14,6 +14,7 @@ const { vesselScope, canAccessVessel } = require("../src/utils/dataScope");
 const { normalizeTelemetrySample } = require("../src/services/telemetry.service");
 const { isValidIngestionKey } = require("../src/middleware/telemetryIngestion.middleware");
 const { analyzeGhostTrace } = require("../src/services/ghostTrace.service");
+const { evaluateDigitalTwin } = require("../src/services/navigationResponse.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -187,4 +188,18 @@ test("college demo 650 metre GPS injection triggers while AIS and MPU6050 stay o
   assert.equal(result.detected,true);
   assert.notEqual(result.alertType,"SIGNALS_CONSISTENT");
   assert.ok(result.signalsEvaluated.aisGapMeters>600);
+});
+
+test("Digital Twin permits a recent bounded correction but blocks a stale trusted position", () => {
+  const now=new Date("2026-01-01T00:10:00Z");
+  const base={
+    trustedPosition:{latitude:18.94,longitude:72.835,speed:10,heading:280,timestamp:new Date("2026-01-01T00:09:30Z")},
+    suspiciousPosition:{latitude:18.94584,longitude:72.835,speed:10,heading:280,timestamp:now}
+  };
+  const safe=evaluateDigitalTwin(base,now);
+  assert.equal(safe.result,"SAFE");
+  assert.equal(safe.checks.requiresHumanApproval,true);
+  const unsafe=evaluateDigitalTwin({...base,trustedPosition:{...base.trustedPosition,timestamp:new Date("2025-12-31T23:00:00Z")}},now);
+  assert.equal(unsafe.result,"UNSAFE");
+  assert.equal(unsafe.checks.trustedPositionFresh,false);
 });

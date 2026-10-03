@@ -25,8 +25,8 @@ No module is considered complete when it exists only as a page, button, route na
 3. GhostTrace foundation: dead reckoning, AIS/gyro/speed/MPU6050 comparison, confidence and explanations. **Implemented as deterministic MVP; trained ML pending.**
 4. Main demo simulation: start/stop voyage, spoof injection, independent true/AIS position, simulated LED/buzzer. **Implemented for the GPS-spoofing MVP.**
 5. Navigation visualization: route, expected position, GPS, AIS and discrepancy markers. **MVP implemented; multi-waypoint routes remain.**
-6. Human response: trusted-position override, safe mode, approve/reject and false-positive workflow.
-7. Navigation digital twin: simulate corrective action before approval.
+6. Human response: trusted-position override, safe mode, approve/reject and false-positive workflow. **Implemented for GhostTrace.**
+7. Navigation digital twin: simulate corrective action before approval. **Implemented for trusted-position correction.**
 8. Incident replay and PDF/JSON reports.
 9. EdgeArmor and device inventory.
 10. NetGuard DNS/network defense.
