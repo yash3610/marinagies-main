@@ -5,6 +5,7 @@ import {
     Bell,
     Boxes,
     FileText,
+    Globe2,
     Gauge,
     LayoutDashboard,
     LogOut,
@@ -31,6 +32,7 @@ const operations = [
     { label: "Digital Twin", path: "/dashboard/digital-twin", icon: Boxes, permission: "digital-twin:view" },
     { label: "Reports", path: "/dashboard/reports", icon: FileText, permission: "reports:view" },
     { label: "EdgeArmor", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
+    { label: "NetGuard", path: "/dashboard/network", icon: Globe2, permission: "network:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

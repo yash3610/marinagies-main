@@ -15,6 +15,7 @@ const ghostTraceRoutes = require("./routes/ghostTrace.routes");
 const simulationRoutes = require("./routes/simulation.routes");
 const navigationActionRoutes = require("./routes/navigationAction.routes");
 const deviceRoutes = require("./routes/device.routes");
+const networkRoutes = require("./routes/network.routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -76,6 +77,7 @@ app.use("/api/ghosttrace", ghostTraceRoutes);
 app.use("/api/attack-simulation", simulationRoutes);
 app.use("/api/navigation-actions", navigationActionRoutes);
 app.use("/api/devices", deviceRoutes);
+app.use("/api/network", networkRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);

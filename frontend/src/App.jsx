@@ -13,6 +13,7 @@ import Incidents from "./pages/Incidents";
 import DigitalTwin from "./pages/DigitalTwin";
 import Reports from "./pages/Reports";
 import EdgeArmor from "./pages/EdgeArmor";
+import NetGuard from "./pages/NetGuard";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="digital-twin" element={permitted("digital-twin:view", <DigitalTwin />)} />
         <Route path="reports" element={permitted("reports:view", <Reports />)} />
         <Route path="devices" element={permitted("devices:view", <EdgeArmor />)} />
+        <Route path="network" element={permitted("network:view", <NetGuard />)} />
         <Route path="users" element={permitted("users:manage", <Users />)} />
         <Route path="settings" element={permitted("settings:view", <Settings />)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />

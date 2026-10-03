@@ -18,6 +18,7 @@ const { evaluateDigitalTwin } = require("../src/services/navigationResponse.serv
 const { createTextPdf } = require("../src/services/pdf.service");
 const { inferredTimeline } = require("../src/services/incidentReport.service");
 const { evaluateDeviceHealth } = require("../src/services/edgeArmor.service");
+const { scoreUnknownDomain, evaluateSegmentation } = require("../src/services/netGuard.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -234,4 +235,19 @@ test("EdgeArmor explains healthy, stale and firmware-tampered device scores", ()
   assert.equal(compromised.riskLevel,"CRITICAL");
   assert.ok(compromised.anomalyCodes.includes("FIRMWARE_MISMATCH"));
   assert.ok(compromised.anomalyCodes.includes("HEARTBEAT_MISSING"));
+});
+
+test("NetGuard explains suspicious domains and applies default-deny segmentation", () => {
+  const suspicious=scoreUnknownDomain("malware-command-control.xyz");
+  assert.equal(suspicious.suspicious,true);
+  assert.ok(suspicious.score>=70);
+  assert.ok(suspicious.signals.length>=2);
+  const policy={segmentationRules:[
+    {from:"MARINEAEGIS",to:"OT",action:"ALLOW",reason:"Monitoring"},
+    {from:"CREW",to:"OT",action:"BLOCK",reason:"Crew isolation"},
+  ]};
+  assert.equal(evaluateSegmentation({sourceSegment:"MARINEAEGIS",destinationSegment:"OT",policy}).verdict,"ALLOWED");
+  const blocked=evaluateSegmentation({sourceSegment:"CREW",destinationSegment:"OT",policy});
+  assert.equal(blocked.verdict,"BLOCKED");
+  assert.match(blocked.reason,/Crew isolation/);
 });

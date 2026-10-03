@@ -29,7 +29,7 @@ No module is considered complete when it exists only as a page, button, route na
 7. Navigation digital twin: simulate corrective action before approval. **Implemented for trusted-position correction.**
 8. Incident replay and PDF/JSON reports. **Implemented with stored timeline events, legacy evidence reconstruction and downloadable backend-generated reports.**
 9. EdgeArmor and device inventory. **Implemented for mock and physical telemetry contracts: registry, heartbeat monitor, explainable health/risk scoring, anomaly alerts and guarded quarantine/release.**
-10. NetGuard DNS/network defense.
+10. NetGuard DNS/network defense. **Deterministic MVP implemented: authenticated event ingestion, threat indicators, DNS sinkhole decisions, review/whitelist, default-deny segmentation, satellite-policy failover, alerts and audit. OS-level DNS/SD-WAN adapters remain deployment work.**
 11. AgentWatch attack-sequence detection.
 12. FleetChoke supplier/device risk.
 13. SARVerify distress authentication.
