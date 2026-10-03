@@ -25,6 +25,8 @@ const { scoreDistressSignal } = require("../src/services/sarVerify.service");
 const { scoreRemoteCommand } = require("../src/services/rocShield.service");
 const { generateSecret, generateTotp, verifyTotp } = require("../src/services/totp.service");
 const { analyzeFileActivity, encryptPayload, decryptPayload } = require("../src/services/recoveryShield.service");
+const { fingerprintFor } = require("../src/services/threatIntelligence.service");
+const { hashContent } = require("../src/services/compliance.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -351,4 +353,21 @@ test("RecoveryShield encrypted snapshots authenticate and detect tampering", () 
   assert.equal(verified.verified,true);
   assert.equal(verified.payload.devices[0].deviceId,"EDGE-1");
   assert.throws(()=>decryptPayload({...snapshot,encryptedPayload:Buffer.from("tampered").toString("base64")}));
+});
+
+test("Unified threat intelligence deduplicates canonical privacy-safe vectors", () => {
+  const first=fingerprintFor("ATTACK_PATTERN","stage-signature",{stages:["RECON","EXFILTRATION"],confidenceBand:"HIGH"});
+  const reordered=fingerprintFor("ATTACK_PATTERN","stage-signature",{confidenceBand:"HIGH",stages:["RECON","EXFILTRATION"]});
+  assert.equal(first,reordered);
+  assert.equal(first,fingerprintFor("ATTACK_PATTERN","stage-signature",{rawTelemetry:"must-not-affect-deduplication"}));
+  assert.notEqual(first,fingerprintFor("ATTACK_PATTERN","different-signature",{confidenceBand:"HIGH",stages:["RECON","EXFILTRATION"]}));
+  assert.equal(fingerprintFor("DOMAIN","EVIL.EXAMPLE",{}),fingerprintFor("DOMAIN","evil.example",{}));
+});
+
+test("Compliance evidence hashes are deterministic and role permissions remain least privilege", () => {
+  assert.equal(hashContent({b:2,a:{z:3,y:1}}),hashContent({a:{y:1,z:3},b:2}));
+  assert.notEqual(hashContent({records:[1,2]}),hashContent({records:[1,3]}));
+  assert.ok(getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.THREAT_INTELLIGENCE_VIEW));
+  assert.ok(!getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.THREAT_INTELLIGENCE_MANAGE));
+  assert.ok(getPermissionsForRole("FLEET_MANAGER").includes(PERMISSIONS.FLEET_LEARNING_MANAGE));
 });

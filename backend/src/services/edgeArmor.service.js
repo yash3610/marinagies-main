@@ -3,6 +3,7 @@ const EdgeDevice = require("../models/EdgeDevice");
 const Alert = require("../models/Alert");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { publishIndicator } = require("./threatIntelligence.service");
 const { syncEdgeDeviceAsset } = require("./fleetChoke.service");
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -81,6 +82,7 @@ const createDeviceAlert = async ({ device, analysis, io }) => {
         description: analysis.reasons.join(" "),
         metadata: { riskScore: analysis.riskScore, anomalyCodes: analysis.anomalyCodes, alertId: alert.alertId },
     }).catch((error) => console.error("EdgeArmor audit error:", error.message));
+    if (analysis.riskScore >= 50) publishIndicator({ type: "DEVICE_COMPROMISE", value: `${device.deviceId}:${analysis.anomalyCodes.join(",")}`, sourceModule: "EDGEARMOR", sourceRef: { model: "EdgeDevice", id: String(device._id) }, discoveryVessel: device.vessel, severity, confidence: analysis.riskScore, reason: analysis.reasons.join(" "), extractedVector: { type: device.type, anomalyCodes: analysis.anomalyCodes, firmwareMismatch: device.reportedFirmware !== device.approvedFirmware } }, io).catch((error) => console.error("EdgeArmor intelligence publish error:", error.message));
     return alert;
 };
 

@@ -10,6 +10,7 @@ const Alert = require("../models/Alert");
 const Incident = require("../models/Incident");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { publishIndicator } = require("./threatIntelligence.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 
 const RANSOMWARE_EXTENSIONS = new Set([".locked", ".encrypted", ".crypt", ".crypto", ".enc", ".lockbit", ".ryuk", ".conti"]);
@@ -112,6 +113,7 @@ const containRansomware = async ({ event, vessel, device, io }) => {
     if (device) { device.containmentState = "QUARANTINED"; device.quarantine = { reason: `RecoveryShield incident ${incident.incidentId}`, quarantinedAt: new Date(), quarantinedBy: null, releasedAt: null, releasedBy: null }; await device.save(); emitVesselEvent(io, "edge-device:update", device, vessel._id); }
     await NetworkPolicy.findOneAndUpdate({ vessel: vessel._id }, { $set: { "satellite.activeProvider": "SATCOM_BACKUP", "satellite.lastSwitchedAt": new Date() }, $inc: { policyVersion: 1 }, $setOnInsert: { vessel: vessel._id } }, { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true });
     event.alert = alert._id; event.incident = incident._id; event.recoveryCase = recoveryCase._id; await event.save();
+    publishIndicator({ type: "RANSOMWARE_SIGNATURE", value: event.extensionsObserved.sort().join(",") || event.deviceId, sourceModule: "RECOVERYSHIELD", sourceRef: { model: "FileActivityEvent", id: String(event._id) }, discoveryVessel: vessel._id, severity: "CRITICAL", confidence: event.confidence, reason: event.explanation.whatCausedIt, extractedVector: { extensions: event.extensionsObserved, signals: event.signals } }, io).catch((error) => console.error("Ransomware intelligence publish error:", error.message));
     appendIncidentEventSafely({ incident: incident._id, vessel: vessel._id, eventType: "DETECTION", title: "Ransomware activity confirmed", description: event.explanation.whatCausedIt, source: "RECOVERYSHIELD", severity: "CRITICAL", data: { event: event._id, recoveryCase: recoveryCase._id, signals: event.signals } });
     appendIncidentEventSafely({ incident: incident._id, vessel: vessel._id, eventType: "STATUS_CHANGED", title: "Automatic ransomware containment completed", description: "File sync disabled, affected device isolated and backup satellite communication enabled.", source: "RECOVERYSHIELD", severity: "CRITICAL", data: { recoveryCase: recoveryCase._id } });
     emitVesselEvent(io, "alert:new", alert, vessel._id); emitVesselEvent(io, "incident:new", incident, vessel._id); emitVesselEvent(io, "recovery:case", recoveryCase, vessel._id);

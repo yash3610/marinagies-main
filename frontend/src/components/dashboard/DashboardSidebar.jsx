@@ -22,6 +22,7 @@ import {
     LifeBuoy,
     RadioTower,
     DatabaseBackup,
+    BrainCircuit,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -43,6 +44,7 @@ const operations = [
     { label: "SARVerify", path: "/dashboard/sarverify", icon: LifeBuoy, permission: "sar-verify:view" },
     { label: "ROCShield", path: "/dashboard/rocshield", icon: RadioTower, permission: "commands:view" },
     { label: "RecoveryShield", path: "/dashboard/recovery", icon: DatabaseBackup, permission: "recovery:view" },
+    { label: "Intelligence Center", path: "/dashboard/intelligence", icon: BrainCircuit, permission: "threat-intelligence:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

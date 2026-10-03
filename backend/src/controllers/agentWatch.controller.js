@@ -9,6 +9,7 @@ const Incident = require("../models/Incident");
 const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { emitVesselEvent } = require("../services/realtime.service");
 const { ingestAgentWatchEvent } = require("../services/agentWatch.service");
+const { publishIndicator } = require("../services/threatIntelligence.service");
 
 const populateSequence = (query) => query
     .populate("vessel", "name vesselId status riskScore riskLevel")
@@ -117,6 +118,7 @@ const reviewSequence = async (req, res) => {
                     confirmedBy: req.user.userId, sharedAt: new Date(), active: true,
                 });
             }
+            await publishIndicator({ type: "ATTACK_PATTERN", value: pattern.signature, sourceModule: "AGENTWATCH", sourceRef: { model: "AutonomousAttackPattern", id: String(pattern._id) }, discoveryVessel: sequence.vessel, severity: "HIGH", confidence: pattern.confidence, reason: `Analyst-confirmed ${pattern.stageSequence.join(" -> ")} attack sequence`, extractedVector: { stages: pattern.stageSequence, eventKinds: pattern.eventKinds, mitreTechniqueIds: pattern.mitreTechniqueIds }, confirmedBy: req.user.userId }, req.app.get("io"));
         } else {
             if (sequence.isolated) {
                 const policy = await NetworkPolicy.findOne({ vessel: sequence.vessel });

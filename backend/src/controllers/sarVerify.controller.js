@@ -9,6 +9,7 @@ const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { evaluateAndStoreDistressSignal } = require("../services/sarVerify.service");
 const { emitVesselEvent } = require("../services/realtime.service");
 const { appendIncidentEventSafely } = require("../services/incidentTimeline.service");
+const { publishIndicator } = require("../services/threatIntelligence.service");
 
 const getOverview = async (req, res) => {
     try {
@@ -67,6 +68,9 @@ const reviewSignal = async (req, res) => {
             if (decision === "ACCEPT") await Incident.findByIdAndUpdate(signal.incident, { status: "RESOLVED", resolvedAt: new Date() });
         }
         await signal.save();
+        if (decision === "REJECT" && req.body.confirmedHoax) {
+            await publishIndicator({ type: "FALSE_DISTRESS", value: `${signal.mmsi}:${signal.format}`, sourceModule: "SARVERIFY", sourceRef: { model: "DistressSignal", id: String(signal._id) }, discoveryVessel: signal.receivingVessel, severity: "HIGH", confidence: signal.confidence, reason: signal.review.note || "Operator-confirmed false distress signal", extractedVector: { mmsi: signal.mmsi, format: signal.format, decision: signal.decision }, confirmedBy: req.user.userId }, req.app.get("io"));
+        }
         res.locals.auditVesselId = String(signal.receivingVessel);
         res.locals.auditResourceId = String(signal._id);
         emitVesselEvent(req.app.get("io"), "sarverify:signal", signal, signal.receivingVessel);

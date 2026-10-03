@@ -6,6 +6,7 @@ const GhostTraceEvent = require("../models/GhostTraceEvent");
 const SimulationSession = require("../models/SimulationSession");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { publishIndicator } = require("./threatIntelligence.service");
 const { recordTrustedPosition, proposeNavigationAction } = require("./navigationResponse.service");
 const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 
@@ -317,6 +318,7 @@ const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io
         description: analysis.explanation.whatCausedIt,
         metadata: { confidence, severity, alertId: alert?.alertId },
     }).catch((error) => console.error("GhostTrace audit error:", error.message));
+    if (event.confidenceLevel === "HIGH") publishIndicator({ type: "GPS_SPOOFING", value: `${event.alertType}:${Number(event.confidenceScore).toFixed(2)}`, sourceModule: "GHOSTTRACE", sourceRef: { model: "GhostTraceEvent", id: String(event._id) }, discoveryVessel: vessel._id, severity: severity === "CRITICAL" ? "CRITICAL" : "HIGH", confidence, reason: analysis.explanation.whatCausedIt, extractedVector: { alertType: event.alertType, anomalyScores: event.anomalyScores } }, io).catch((error) => console.error("GhostTrace intelligence publish error:", error.message));
     return { event, alert, incident, navigationAction };
 };
 

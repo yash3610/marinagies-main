@@ -6,6 +6,7 @@ const Alert = require("../models/Alert");
 const Vessel = require("../models/Vessel");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { publishIndicator } = require("./threatIntelligence.service");
 const { processAgentWatchNetworkEvent } = require("./agentWatch.service");
 
 const SEGMENTS = new Set(["OT", "IT", "CREW", "MARINEAEGIS", "UPLINK"]);
@@ -192,6 +193,7 @@ const processNetworkEvent = async (input, io) => {
         resource: "NETWORK_EVENT", resourceId: String(event._id), description: event.reason,
         metadata: { eventId, verdict: event.verdict, domain: event.domain, riskScore: event.riskScore },
     }).catch((error) => console.error("NetGuard audit error:", error.message));
+    if (event.domain && ["BLOCKED", "SINKHOLED"].includes(event.verdict) && event.riskScore >= 70) publishIndicator({ type: "DOMAIN", value: event.domain, sourceModule: "NETGUARD", sourceRef: { model: "NetworkEvent", id: String(event._id) }, discoveryVessel: vessel._id, severity: event.riskScore >= 90 ? "CRITICAL" : "HIGH", confidence: event.confidence, reason: event.reason, extractedVector: { verdict: event.verdict, riskBand: event.riskScore >= 90 ? "CRITICAL" : "HIGH" } }, io).catch((error) => console.error("NetGuard intelligence publish error:", error.message));
     return { event: populated, vessel, policy, duplicate: false, alert };
 };
 

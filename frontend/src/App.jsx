@@ -23,6 +23,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AuditLogs from "./pages/AuditLogs";
 import AttackSimulation from "./pages/AttackSimulation";
+import IntelligenceCenter from "./pages/IntelligenceCenter";
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="sarverify" element={permitted("sar-verify:view", <SARVerify />)} />
         <Route path="rocshield" element={permitted("commands:view", <ROCShield />)} />
         <Route path="recovery" element={permitted("recovery:view", <RecoveryShield />)} />
+        <Route path="intelligence" element={permitted("threat-intelligence:view", <IntelligenceCenter />)} />
         <Route path="users" element={permitted("users:manage", <Users />)} />
         <Route path="settings" element={permitted("settings:view", <Settings />)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", <AuditLogs />)} />
