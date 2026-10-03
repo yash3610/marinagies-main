@@ -3,6 +3,7 @@ import {
     Activity,
     Anchor,
     Bell,
+    Bot,
     Boxes,
     FileText,
     Globe2,
@@ -33,6 +34,7 @@ const operations = [
     { label: "Reports", path: "/dashboard/reports", icon: FileText, permission: "reports:view" },
     { label: "EdgeArmor", path: "/dashboard/devices", icon: Gauge, permission: "devices:view" },
     { label: "NetGuard", path: "/dashboard/network", icon: Globe2, permission: "network:view" },
+    { label: "AgentWatch", path: "/dashboard/agentwatch", icon: Bot, permission: "security-operations:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

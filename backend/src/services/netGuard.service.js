@@ -6,6 +6,7 @@ const Alert = require("../models/Alert");
 const Vessel = require("../models/Vessel");
 const { emitVesselEvent } = require("./realtime.service");
 const { writeAuditLog } = require("./audit.service");
+const { processAgentWatchNetworkEvent } = require("./agentWatch.service");
 
 const SEGMENTS = new Set(["OT", "IT", "CREW", "MARINEAEGIS", "UPLINK"]);
 const normalizeDomain = (value) => String(value || "").trim().toLowerCase().replace(/\.$/, "");
@@ -149,9 +150,24 @@ const processNetworkEvent = async (input, io) => {
     const policy = await getOrCreatePolicy(vessel._id);
     const eventType = String(input.eventType || "DNS_QUERY").toUpperCase();
     const sourceSegment = String(input.sourceSegment || "IT").toUpperCase();
-    const decision = eventType === "DNS_QUERY"
-        ? await evaluateDnsQuery({ domain: input.domain, policy })
-        : evaluateSegmentation({ sourceSegment, destinationSegment: String(input.destinationSegment || "").toUpperCase(), policy });
+    const isolatedSource = policy.isolatedSources.find((item) => item.active && (
+        item.sourceIp === input.sourceIp
+    ));
+    let decision;
+    if (isolatedSource) {
+        const isolatedDomain = eventType === "DNS_QUERY" ? normalizeDomain(input.domain) : null;
+        if (eventType === "DNS_QUERY" && !isValidDomain(isolatedDomain)) {
+            throw Object.assign(new Error("A valid fully-qualified domain is required"), { status: 400 });
+        }
+        decision = {
+            domain: isolatedDomain, verdict: "BLOCKED", confidence: 100, riskScore: 100,
+            reason: `Source ${input.sourceIp} is isolated by AgentWatch policy. ${isolatedSource.reason}`,
+        };
+    } else {
+        decision = eventType === "DNS_QUERY"
+            ? await evaluateDnsQuery({ domain: input.domain, policy })
+            : evaluateSegmentation({ sourceSegment, destinationSegment: String(input.destinationSegment || "").toUpperCase(), policy });
+    }
     const event = await NetworkEvent.create({
         eventId, vessel: vessel._id, eventType,
         sourceDevice: String(input.sourceDevice || "unknown-device").slice(0, 100),
@@ -167,6 +183,7 @@ const processNetworkEvent = async (input, io) => {
         timestamp: input.timestamp || new Date(),
     });
     const alert = await createNetGuardAlert({ event, policy, io });
+    processAgentWatchNetworkEvent(event, io);
     const populated = await NetworkEvent.findById(event._id).populate("vessel", "name vesselId").lean();
     emitVesselEvent(io, "netguard:event", populated, vessel._id);
     writeAuditLog({

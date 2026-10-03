@@ -26,6 +26,15 @@ const networkPolicySchema = new mongoose.Schema({
         { from: "CREW", to: "OT", action: "BLOCK", reason: "Crew network isolated from operational technology" },
         { from: "IT", to: "OT", action: "BLOCK", reason: "Business IT isolated from operational technology" },
     ] },
+    isolatedSources: [{
+        sourceIp: { type: String, required: true, trim: true },
+        reason: { type: String, required: true, trim: true },
+        sequence: { type: mongoose.Schema.Types.ObjectId, ref: "AttackSequence", default: null },
+        isolatedAt: { type: Date, default: Date.now },
+        releasedAt: { type: Date, default: null },
+        releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        active: { type: Boolean, default: true },
+    }],
     satellite: {
         primaryProvider: { type: String, default: "SATCOM_PRIMARY", trim: true },
         backupProvider: { type: String, default: "SATCOM_BACKUP", trim: true },

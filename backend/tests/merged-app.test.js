@@ -19,6 +19,7 @@ const { createTextPdf } = require("../src/services/pdf.service");
 const { inferredTimeline } = require("../src/services/incidentReport.service");
 const { evaluateDeviceHealth } = require("../src/services/edgeArmor.service");
 const { scoreUnknownDomain, evaluateSegmentation } = require("../src/services/netGuard.service");
+const { analyzeAttackSequence } = require("../src/services/agentWatch.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -250,4 +251,21 @@ test("NetGuard explains suspicious domains and applies default-deny segmentation
   const blocked=evaluateSegmentation({sourceSegment:"CREW",destinationSegment:"OT",policy});
   assert.equal(blocked.verdict,"BLOCKED");
   assert.match(blocked.reason,/Crew isolation/);
+});
+
+test("AgentWatch distinguishes machine-speed progression from incomplete activity", () => {
+  const base=Date.parse("2026-01-01T00:00:00Z");
+  const kinds=[
+    ["NETWORK_SCAN","RECON"],["NETWORK_SCAN","RECON"],["AUTH_FAILURE","CREDENTIAL_ATTACK"],
+    ["AUTH_SUCCESS","CREDENTIAL_ATTACK"],["PRIVILEGE_ESCALATION","LATERAL_MOVEMENT"],
+    ["COMMAND_EXECUTION","LATERAL_MOVEMENT"],["EXFILTRATION","EXFILTRATION"],
+  ];
+  const fast=analyzeAttackSequence(kinds.map(([eventKind,stage],index)=>({eventKind,stage,timestamp:new Date(base+index*500)})));
+  assert.equal(fast.classification,"AUTONOMOUS_SUSPECTED");
+  assert.equal(fast.confidenceLevel,"HIGH");
+  assert.equal(fast.stages.length,4);
+  assert.ok(fast.mitreTechniques.some(item=>item.techniqueId==="T1041"));
+  const incomplete=analyzeAttackSequence(kinds.slice(0,4).map(([eventKind,stage],index)=>({eventKind,stage,timestamp:new Date(base+index*500)})));
+  assert.equal(incomplete.classification,"INCOMPLETE");
+  assert.ok(incomplete.confidence<70);
 });
