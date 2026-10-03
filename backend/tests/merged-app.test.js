@@ -22,6 +22,8 @@ const { scoreUnknownDomain, evaluateSegmentation } = require("../src/services/ne
 const { analyzeAttackSequence } = require("../src/services/agentWatch.service");
 const { calculateSupplierRisk, buildWhatIfScenario } = require("../src/services/fleetChoke.service");
 const { scoreDistressSignal } = require("../src/services/sarVerify.service");
+const { scoreRemoteCommand } = require("../src/services/rocShield.service");
+const { generateSecret, generateTotp, verifyTotp } = require("../src/services/totp.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -308,4 +310,24 @@ test("SARVerify accepts corroborated distress and rejects a known hoax", () => {
   assert.equal(hoax.decision,"LIKELY_FALSE");
   assert.ok(hoax.trustScore<0.4);
   assert.match(hoax.explanation.whyItMatters,/course-diversion/);
+});
+
+test("ROCShield executes normal commands and blocks unauthenticated command channels", () => {
+  const baseline={totalCommands:20,commandTypeCounts:{SET_SPEED:10,CHANGE_ROUTE:2},hourCounts:{"10":5}};
+  const safe=scoreRemoteCommand({input:{type:"SET_SPEED",parameters:{speed:12},issuedAt:new Date("2026-01-01T10:00:00Z"),channelAuthenticated:true},operatorRole:"ROC_OPERATOR",baseline,vesselState:{heading:90,speed:10,status:"ONLINE"},recentCommands:[]});
+  assert.equal(safe.decision,"AUTO_EXECUTE");
+  assert.ok(safe.riskScore<=0.30);
+  const fake=scoreRemoteCommand({input:{type:"CHANGE_ROUTE",parameters:{heading:270,distanceKm:1200},issuedAt:new Date("2026-01-01T03:00:00Z"),channelAuthenticated:false},operatorRole:"ADMIN",baseline,vesselState:{heading:90,speed:24,status:"WARNING"},weather:{condition:"STORM"},recentCommands:[{type:"STOP_ENGINE",decision:"BLOCK"}]});
+  assert.equal(fake.decision,"BLOCK");
+  assert.equal(fake.riskFactors.authorityCheck.score,1);
+  assert.match(fake.riskFactors.authorityCheck.reasons[0],/failed origin authentication/);
+});
+
+test("ROCShield authenticator codes verify only inside the accepted TOTP window", () => {
+  const secret=generateSecret();
+  const now=Date.parse("2026-01-01T00:00:00Z");
+  const code=generateTotp(secret,now);
+  assert.equal(verifyTotp(secret,code,now),true);
+  assert.equal(verifyTotp(secret,"000000",now),code==="000000");
+  assert.equal(verifyTotp(secret,code,now+120000),false);
 });

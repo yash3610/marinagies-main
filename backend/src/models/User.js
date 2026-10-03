@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema(
         mfa: {
             enabled: { type: Boolean, default: false },
             secret: { type: String, select: false, default: null },
+            pendingSecret: { type: String, select: false, default: null },
             verifiedAt: { type: Date, default: null },
         },
 

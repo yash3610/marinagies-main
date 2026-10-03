@@ -140,10 +140,11 @@ const AttackSimulation = () => {
                         </p>
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                         <ActionButton icon={Play} label="Start Voyage" color="cyan" disabled={!canManage || busy || isRunning} onClick={() => runAction("/attack-simulation/voyage/start")} />
                         <ActionButton icon={Siren} label="Inject GPS Spoofing" color="red" disabled={!canManage || busy || !isRunning || attackActive} onClick={() => runAction("/attack-simulation/gps-spoofing", { distanceMeters: 650, direction: "NORTH" })} />
                         <ActionButton icon={LifeBuoy} label="Inject Fake Distress" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/fake-distress")} />
+                        <ActionButton icon={Radio} label="Inject Fake Command" color="red" disabled={!canManage || busy} onClick={() => runAction("/attack-simulation/fake-command")} />
                         <ActionButton icon={RotateCcw} label="Restore Signals" color="amber" disabled={!canManage || busy || !session} onClick={() => runAction("/attack-simulation/reset")} />
                         <ActionButton icon={CircleStop} label="Stop Voyage" color="slate" disabled={!canManage || busy || !isRunning} onClick={() => runAction("/attack-simulation/voyage/stop")} />
                     </div>

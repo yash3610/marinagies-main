@@ -19,6 +19,7 @@ const networkRoutes = require("./routes/network.routes");
 const agentWatchRoutes = require("./routes/agentWatch.routes");
 const fleetChokeRoutes = require("./routes/fleetChoke.routes");
 const sarVerifyRoutes = require("./routes/sarVerify.routes");
+const rocShieldRoutes = require("./routes/rocShield.routes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -84,6 +85,7 @@ app.use("/api/network", networkRoutes);
 app.use("/api/agentwatch", agentWatchRoutes);
 app.use("/api/fleetchoke", fleetChokeRoutes);
 app.use("/api/sarverify", sarVerifyRoutes);
+app.use("/api/rocshield", rocShieldRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);

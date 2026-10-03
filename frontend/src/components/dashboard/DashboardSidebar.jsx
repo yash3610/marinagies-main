@@ -20,6 +20,7 @@ import {
     Users,
     Siren,
     LifeBuoy,
+    RadioTower,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -39,6 +40,7 @@ const operations = [
     { label: "AgentWatch", path: "/dashboard/agentwatch", icon: Bot, permission: "security-operations:view" },
     { label: "FleetChoke", path: "/dashboard/fleet-risk", icon: GitFork, permission: "fleet-risk:view" },
     { label: "SARVerify", path: "/dashboard/sarverify", icon: LifeBuoy, permission: "sar-verify:view" },
+    { label: "ROCShield", path: "/dashboard/rocshield", icon: RadioTower, permission: "commands:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
 ];
 

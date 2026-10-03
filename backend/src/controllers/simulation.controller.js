@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
+const crypto = require("node:crypto");
 const SimulationSession = require("../models/SimulationSession");
 const Vessel = require("../models/Vessel");
 const VesselCurrentState = require("../models/VesselCurrentState");
 const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { emitVesselEvent } = require("../services/realtime.service");
 const { evaluateAndStoreDistressSignal } = require("../services/sarVerify.service");
+const { interceptRemoteCommand } = require("../services/rocShield.service");
 
 const requireVesselAccess = async (req, res) => {
     const vesselId = req.body?.vessel || req.params?.vesselId;
@@ -216,4 +218,14 @@ const injectFakeDistress = async (req, res) => {
     }
 };
 
-module.exports = { getSessions, getVesselSession, startVoyage, stopVoyage, injectGpsSpoofing, injectFakeDistress, resetSimulation };
+const injectFakeCommand = async (req, res) => {
+    try {
+        const vessel = await requireVesselAccess(req, res);
+        if (!vessel) return;
+        const command = await interceptRemoteCommand({ input: { commandId: `ROC-ATTACK-${Date.now()}`, nonce: crypto.randomBytes(16).toString("hex"), vessel: vessel._id, type: "CHANGE_ROUTE", parameters: { heading: 220, distanceKm: 1200, destination: "Unverified offshore waypoint" }, issuedAt: new Date(), channelAuthenticated: false, simulated: true }, operatorId: req.user.userId, operatorRole: req.user.role, io: req.app.get("io") });
+        res.locals.auditVesselId = String(vessel._id); res.locals.auditResourceId = String(command._id);
+        res.status(201).json({ success: true, message: "Fake remote command injected and blocked by ROCShield", command });
+    } catch (error) { res.status(error.status || 400).json({ success: false, message: error.message || "Failed to inject fake command" }); }
+};
+
+module.exports = { getSessions, getVesselSession, startVoyage, stopVoyage, injectGpsSpoofing, injectFakeDistress, injectFakeCommand, resetSimulation };
