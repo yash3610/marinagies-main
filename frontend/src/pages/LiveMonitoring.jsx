@@ -72,7 +72,16 @@ const LiveMonitoring = () => {
         socket.on("telemetry:update", (data) => {
             if (!data?.success) return;
 
-            setTelemetry(data.data || []);
+            setTelemetry((current) => {
+                const merged = new Map();
+                const vesselIdOf = (item) => String(
+                    item?.vessel?._id || item?.vessel || item?.telemetry?.vessel || ""
+                );
+                current.forEach((item) => merged.set(vesselIdOf(item), item));
+                (data.data || []).forEach((item) => merged.set(vesselIdOf(item), item));
+                merged.delete("");
+                return [...merged.values()];
+            });
             setLastUpdate(new Date());
         });
 
@@ -95,8 +104,8 @@ const LiveMonitoring = () => {
     const selectedTelemetry = useMemo(() => {
         if (!selectedVessel) return null;
 
-        const record = telemetry.find(
-            (item) => item.vessel?._id === selectedVessel._id
+        const record = telemetry.find((item) =>
+            String(item.vessel?._id || item.vessel || item.telemetry?.vessel) === String(selectedVessel._id)
         );
 
         return record?.telemetry || record || null;
@@ -107,8 +116,8 @@ const LiveMonitoring = () => {
     // =========================
     const stats = useMemo(() => {
         const records = vessels.map((vessel) => {
-            const record = telemetry.find(
-                (item) => item.vessel?._id === vessel._id
+            const record = telemetry.find((item) =>
+                String(item.vessel?._id || item.vessel || item.telemetry?.vessel) === String(vessel._id)
             );
 
             return {
@@ -476,6 +485,50 @@ const LiveMonitoring = () => {
                             title="AIS Status"
                             value={selectedTelemetry?.aisStatus || "--"}
                         />
+                    </div>
+
+                    {/* Independent ESP32 / MPU6050 motion evidence */}
+                    <div className="rounded-xl border border-cyan-400/15 bg-slate-950/70 p-5">
+                        <div className="mb-4 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-white">
+                                    ESP32 / MPU6050 Motion Evidence
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Independent physical-motion signal used to verify GPS and AIS movement
+                                </p>
+                            </div>
+                            <Activity className="h-5 w-5 text-cyan-400" />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <InfoCard
+                                icon={Cpu}
+                                title="Sensor Node"
+                                value={selectedTelemetry?.sensorNode?.deviceId || "--"}
+                            />
+                            <InfoCard
+                                icon={Activity}
+                                title="Accelerometer X / Y / Z"
+                                value={selectedTelemetry?.motion?.accelerometer
+                                    ? `${formatNumber(selectedTelemetry.motion.accelerometer.x, 2)} / ${formatNumber(selectedTelemetry.motion.accelerometer.y, 2)} / ${formatNumber(selectedTelemetry.motion.accelerometer.z, 2)} g`
+                                    : "--"}
+                            />
+                            <InfoCard
+                                icon={Compass}
+                                title="Gyroscope X / Y / Z"
+                                value={selectedTelemetry?.motion?.gyroscope
+                                    ? `${formatNumber(selectedTelemetry.motion.gyroscope.x, 1)} / ${formatNumber(selectedTelemetry.motion.gyroscope.y, 1)} / ${formatNumber(selectedTelemetry.motion.gyroscope.z, 1)} °/s`
+                                    : "--"}
+                            />
+                            <InfoCard
+                                icon={Navigation}
+                                title="Physical Motion"
+                                value={selectedTelemetry?.motion?.motionDetected === undefined
+                                    ? "--"
+                                    : selectedTelemetry.motion.motionDetected ? "DETECTED" : "STATIONARY"}
+                            />
+                        </div>
                     </div>
 
                     {/* Device Health */}

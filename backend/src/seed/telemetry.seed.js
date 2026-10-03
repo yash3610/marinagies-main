@@ -3,6 +3,8 @@ const dotenv = require("dotenv");
 
 const Vessel = require("../models/Vessel");
 const Telemetry = require("../models/Telemetry");
+const VesselCurrentState = require("../models/VesselCurrentState");
+const { ingestTelemetry } = require("../services/telemetry.service");
 
 dotenv.config();
 
@@ -81,6 +83,7 @@ const seedTelemetry = async () => {
         console.log("MongoDB connected");
 
         await Telemetry.deleteMany({});
+        await VesselCurrentState.deleteMany({});
 
         for (const item of telemetryData) {
             const vessel = await Vessel.findOne({
@@ -93,8 +96,10 @@ const seedTelemetry = async () => {
                 continue;
             }
 
-            await Telemetry.create({
+            await ingestTelemetry({
                 vessel: vessel._id,
+                eventId: `seed:${vessel.vesselId}`,
+                source: "SIMULATOR",
                 speed: item.speed,
                 heading: item.heading,
                 latitude: item.latitude,

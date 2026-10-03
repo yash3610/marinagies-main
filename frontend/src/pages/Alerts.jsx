@@ -933,6 +933,28 @@ const AlertDetailsModal = ({
                         />
                     </div>
 
+                    {alert.explanation && (
+                        <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                                Why GhostTrace flagged this
+                            </p>
+                            <div className="mt-3 space-y-3 text-sm">
+                                <div>
+                                    <p className="text-xs text-slate-500">What happened</p>
+                                    <p className="mt-1 text-slate-200">{alert.explanation.whatHappened}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-500">Evidence</p>
+                                    <p className="mt-1 text-slate-200">{alert.explanation.whatCausedIt}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-500">Recommended action</p>
+                                    <p className="mt-1 text-cyan-200">{alert.explanation.recommendedAction}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Confidence */}
 
                     <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/[0.03] p-4">

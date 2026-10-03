@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const app = require("./app");
 const connectDB = require("./config/db");
 const Telemetry = require("./models/Telemetry");
+const VesselCurrentState = require("./models/VesselCurrentState");
 const User = require("./models/User");
 const { startTelemetrySimulator } = require("./services/telemetrySimulator");
 const { ACCESS_TOKEN_COOKIE } = require("./controllers/auth.controller");
@@ -65,9 +66,42 @@ io.on("connection", async (socket) => {
         const telemetryFilter = socket.user.allVessels
             ? {}
             : { vessel: { $in: socket.user.vesselAccess } };
-        const telemetryData = await Telemetry.find(telemetryFilter)
+        const currentStates = await VesselCurrentState.find(telemetryFilter)
             .populate("vessel")
-            .sort({ timestamp: -1 });
+            .lean();
+        let telemetryData = currentStates.map((state) => ({
+            _id: state.telemetry,
+            vessel: state.vessel,
+            eventId: state.eventId,
+            source: state.source,
+            timestamp: state.sourceTimestamp,
+            receivedAt: state.receivedAt,
+            speed: state.speed,
+            heading: state.heading,
+            latitude: state.latitude,
+            longitude: state.longitude,
+            depth: state.depth,
+            gpsSignal: state.gpsSignal,
+            aisStatus: state.aisStatus,
+            deviceStatus: state.deviceStatus,
+            engineTemperature: state.engineTemperature,
+            fuelLevel: state.fuelLevel,
+            sensorNode: state.sensorNode,
+            motion: state.motion,
+            navigationReference: state.navigationReference,
+        }));
+
+        // Backward-compatible fallback for vessels that have historical rows but
+        // have not received a sample since VesselCurrentState was introduced.
+        const currentVesselIds = currentStates.map((state) => state.vessel?._id || state.vessel);
+        const legacyTelemetry = await Telemetry.aggregate([
+            { $match: { $and: [telemetryFilter, { vessel: { $nin: currentVesselIds } }] } },
+            { $sort: { timestamp: -1 } },
+            { $group: { _id: "$vessel", telemetry: { $first: "$$ROOT" } } },
+            { $replaceRoot: { newRoot: "$telemetry" } },
+        ]);
+        await Telemetry.populate(legacyTelemetry, { path: "vessel" });
+        telemetryData = telemetryData.concat(legacyTelemetry);
 
         socket.emit("telemetry:update", {
             success: true,
@@ -96,7 +130,9 @@ io.on("connection", async (socket) => {
 const startServer = async () => {
     try {
         await connectDB();
-        startTelemetrySimulator(io);
+        if (process.env.ENABLE_TELEMETRY_SIMULATOR === "true") {
+            startTelemetrySimulator(io);
+        }
 
         server.listen(PORT, () => {
             console.log("");

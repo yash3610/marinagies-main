@@ -12,7 +12,8 @@
     "seed:alerts": "node src/seed/alert.seed.js",
     "seed:incidents": "node src/seed/incident.seed.js",
     "seed:telemetry": "node src/seed/telemetry.seed.js",
-    "migrate:audit-logs": "node src/scripts/migrateAuditLogs.js"
+    "migrate:audit-logs": "node src/scripts/migrateAuditLogs.js",
+    "migrate:telemetry-state": "node src/scripts/backfillTelemetryState.js"
   },
   "keywords": [
     "maritime",

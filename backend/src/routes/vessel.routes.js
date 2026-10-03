@@ -3,6 +3,7 @@ const express = require("express");
 const {
     getVessels,
     getVesselById,
+    getVesselStatus,
     createVessel,
     updateVessel,
     deleteVessel,
@@ -21,6 +22,8 @@ const router = express.Router();
 router.get("/", authenticate, authorizePermission(PERMISSIONS.VESSELS_VIEW), getVessels);
 
 // Get single vessel
+router.get("/:id/status", authenticate, authorizePermission(PERMISSIONS.VESSELS_VIEW), getVesselStatus);
+
 router.get("/:id", authenticate, authorizePermission(PERMISSIONS.VESSELS_VIEW), getVesselById);
 
 // Create vessel - ADMIN only

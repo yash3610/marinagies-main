@@ -1,5 +1,8 @@
 const Vessel = require("../models/Vessel");
 const User = require("../models/User");
+const Alert = require("../models/Alert");
+const Incident = require("../models/Incident");
+const VesselCurrentState = require("../models/VesselCurrentState");
 const { vesselScope } = require("../utils/dataScope");
 
 // Get all vessels
@@ -50,6 +53,38 @@ const getVesselById = async (req, res) => {
             success: false,
             message: "Failed to fetch vessel",
         });
+    }
+};
+
+const getVesselStatus = async (req, res) => {
+    try {
+        const vessel = await Vessel.findOne({
+            _id: req.params.id,
+            isActive: true,
+            ...vesselScope(req, "_id"),
+        }).lean();
+        if (!vessel) return res.status(404).json({ success: false, message: "Vessel not found" });
+
+        const [telemetry, activeAlerts, activeIncidents] = await Promise.all([
+            VesselCurrentState.findOne({ vessel: vessel._id }).lean(),
+            Alert.countDocuments({ vessel: vessel._id, status: { $ne: "RESOLVED" } }),
+            Incident.countDocuments({ vessel: vessel._id, status: { $nin: ["RESOLVED", "CLOSED"] } }),
+        ]);
+        res.status(200).json({
+            success: true,
+            data: {
+                vessel,
+                telemetry,
+                activeAlerts,
+                activeIncidents,
+                telemetryAgeSeconds: telemetry
+                    ? Math.max(0, Math.floor((Date.now() - new Date(telemetry.sourceTimestamp).getTime()) / 1000))
+                    : null,
+            },
+        });
+    } catch (error) {
+        console.error("Get vessel status error:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch vessel status" });
     }
 };
 
@@ -148,6 +183,7 @@ const deleteVessel = async (req, res) => {
 module.exports = {
     getVessels,
     getVesselById,
+    getVesselStatus,
     createVessel,
     updateVessel,
     deleteVessel,

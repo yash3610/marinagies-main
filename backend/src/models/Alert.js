@@ -51,7 +51,7 @@ const alertSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["OPEN", "ACKNOWLEDGED", "RESOLVED"],
+            enum: ["OPEN", "ACKNOWLEDGED", "RESOLVED", "FALSE_POSITIVE"],
             default: "OPEN",
         },
 
@@ -75,6 +75,13 @@ const alertSchema = new mongoose.Schema(
             max: 100,
             default: 0,
         },
+
+        module: { type: String, default: "SYSTEM", trim: true },
+        confidenceLevel: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], default: "LOW" },
+        explanation: { type: mongoose.Schema.Types.Mixed, default: null },
+        evidence: { type: mongoose.Schema.Types.Mixed, default: null },
+        detectionEvent: { type: mongoose.Schema.Types.ObjectId, ref: "GhostTraceEvent", default: null },
+        resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
         detectedAt: {
             type: Date,

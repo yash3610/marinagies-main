@@ -11,6 +11,9 @@ const { verifySessionToken } = require("../src/middleware/auth.middleware");
 const { getPermissionsForRole, PERMISSIONS } = require("../src/utils/accessControl");
 const { sanitize } = require("../src/middleware/audit.middleware");
 const { vesselScope, canAccessVessel } = require("../src/utils/dataScope");
+const { normalizeTelemetrySample } = require("../src/services/telemetry.service");
+const { isValidIngestionKey } = require("../src/middleware/telemetryIngestion.middleware");
+const { analyzeGhostTrace } = require("../src/services/ghostTrace.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -118,4 +121,56 @@ test("vessel data scope denies unassigned vessels", () => {
   assert.equal(canAccessVessel(scopedRequest,"507f1f77bcf86cd799439011"),true);
   assert.equal(canAccessVessel(scopedRequest,"507f191e810c19729de860ea"),false);
   assert.deepEqual(vesselScope({user:{allVessels:true}},"_id"),{});
+});
+
+test("telemetry ingestion validates ranges, source time and normalizes values", () => {
+  const now=new Date("2026-01-01T00:00:00.000Z");
+  const sample=normalizeTelemetrySample({
+    vessel:"507f1f77bcf86cd799439011",latitude:"18.94",longitude:72.835,
+    speed:"12.5",heading:360,source:"nmea",timestamp:"2025-12-31T23:59:00.000Z",
+    deviceId:"ESP32-BRIDGE-01",
+    mpu6050:{accel:{x:0.04,y:-0.02,z:1.01},gyro:{x:0.2,y:0.1,z:1.4},temperature:31.5,motionDetected:true},
+    aisLatitude:18.9401,aisLongitude:72.8351,gyroHeading:359,simulatedSpeed:12.2
+  },now);
+  assert.equal(sample.speed,12.5);
+  assert.equal(sample.source,"NMEA");
+  assert.equal(sample.sensorNode.deviceId,"ESP32-BRIDGE-01");
+  assert.equal(sample.motion.accelerometer.z,1.01);
+  assert.equal(sample.motion.gyroscope.z,1.4);
+  assert.equal(sample.navigationReference.gyroHeading,359);
+  assert.throws(()=>normalizeTelemetrySample({vessel:"bad",latitude:0,longitude:0},now),/valid vessel id/);
+  assert.throws(()=>normalizeTelemetrySample({vessel:"507f1f77bcf86cd799439011",latitude:91,longitude:0},now),/latitude/);
+  assert.throws(()=>normalizeTelemetrySample({vessel:"507f1f77bcf86cd799439011",latitude:0,longitude:0,timestamp:"2026-01-01T00:06:00.000Z"},now),/5 minutes/);
+  assert.throws(()=>normalizeTelemetrySample({vessel:"507f1f77bcf86cd799439011",latitude:0,longitude:0,mpu6050:{accel:{x:17}}},now),/accelerometer.x/);
+});
+
+test("telemetry agent key requires a configured 32-character secret", () => {
+  const key="a-secure-telemetry-key-with-32-characters";
+  assert.equal(isValidIngestionKey(key,key),true);
+  assert.equal(isValidIngestionKey("wrong",key),false);
+  assert.equal(isValidIngestionKey("short","short"),false);
+});
+
+test("GhostTrace raises confidence when GPS movement conflicts with MPU6050 and AIS", () => {
+  const previous={latitude:18,longitude:72,speed:10,heading:90,sourceTimestamp:new Date("2026-01-01T00:00:00Z")};
+  const result=analyzeGhostTrace({
+    latitude:18.01,longitude:72.01,speed:10,heading:90,timestamp:new Date("2026-01-01T00:00:10Z"),
+    motion:{accelerometer:{x:0,y:0,z:1},gyroscope:{x:0,y:0,z:0},motionDetected:false},
+    navigationReference:{aisLatitude:18,aisLongitude:72,gyroHeading:90,simulatedSpeed:10}
+  },previous,0.7);
+  assert.equal(result.detected,true);
+  assert.equal(result.confidenceLevel,"HIGH");
+  assert.ok(result.anomalyScores.physicalMotionMismatch>0.8);
+  assert.match(result.explanation.whatCausedIt,/MPU6050/);
+});
+
+test("GhostTrace does not alert when independent motion and navigation signals agree", () => {
+  const previous={latitude:18,longitude:72,speed:10,heading:90,sourceTimestamp:new Date("2026-01-01T00:00:00Z")};
+  const result=analyzeGhostTrace({
+    latitude:18,longitude:72.00049,speed:10,heading:90,timestamp:new Date("2026-01-01T00:00:10Z"),
+    motion:{accelerometer:{x:0.1,y:0,z:1},gyroscope:{x:0,y:0,z:3},motionDetected:true},
+    navigationReference:{aisLatitude:18,aisLongitude:72.00049,gyroHeading:90,simulatedSpeed:10}
+  },previous,0.7);
+  assert.equal(result.detected,false);
+  assert.ok(result.confidenceScore<0.2);
 });
