@@ -50,7 +50,8 @@ const SOC = () => {
     };
 
     useEffect(() => {
-        loadSecurityData();
+        const timer = window.setTimeout(loadSecurityData, 0);
+        return () => window.clearTimeout(timer);
     }, []);
 
     // =========================

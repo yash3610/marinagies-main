@@ -12,7 +12,8 @@ import { postJson } from "../../services/api.js";
 export default function PageLayout({ pageSlug, title, variant, children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loadedPage, setLoadedPage] = useState(null);
+  const loading = loadedPage !== pageSlug;
   const [status, setStatus] = useState(null);
 
   useLayoutEffect(() => {
@@ -26,8 +27,7 @@ export default function PageLayout({ pageSlug, title, variant, children }) {
 
   useEffect(() => {
     document.title = title;
-    setLoading(true);
-    const timer = window.setTimeout(() => setLoading(false), 250);
+    const timer = window.setTimeout(() => setLoadedPage(pageSlug), 250);
     window.scrollTo(0, 0);
     return () => window.clearTimeout(timer);
   }, [pageSlug, title]);

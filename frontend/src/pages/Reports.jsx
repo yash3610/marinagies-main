@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Activity,
     AlertTriangle,
     BarChart3,
-    CalendarDays,
     CheckCircle2,
     Clock3,
     FileBarChart,
@@ -15,7 +14,6 @@ import {
     Ship,
     Siren,
     TrendingUp,
-    XCircle,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -34,11 +32,7 @@ const Reports = () => {
     const [selectedVessel, setSelectedVessel] =
         useState("ALL");
 
-    useEffect(() => {
-        loadReportData();
-    }, []);
-
-    const loadReportData = async () => {
+    const loadReportData = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -68,7 +62,12 @@ const Reports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setTimeout(loadReportData, 0);
+        return () => window.clearTimeout(timer);
+    }, [loadReportData]);
 
     // ========================================
     // FILTER DATA

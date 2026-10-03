@@ -15,7 +15,6 @@ import {
     Wifi,
     Fuel,
     AlertTriangle,
-    CheckCircle2,
     XCircle,
 } from "lucide-react";
 import { createSocket } from "../services/socket";

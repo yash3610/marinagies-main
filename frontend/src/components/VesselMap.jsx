@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Anchor,
-    Navigation,
     Ship,
     Crosshair,
     Maximize2,
@@ -25,7 +24,7 @@ import { createSocket } from "../services/socket";
 const MapController = ({ vessels, selectedVessel }) => {
     const map = useMap();
 
-    const fitFleet = () => {
+    const fitFleet = useCallback(() => {
         const validVessels = vessels.filter(
             (vessel) =>
                 typeof vessel.latitude === "number" &&
@@ -46,7 +45,7 @@ const MapController = ({ vessels, selectedVessel }) => {
             maxZoom: 6,
             animate: true,
         });
-    };
+    }, [map, vessels]);
 
     /* Initial fleet positioning */
 
@@ -59,7 +58,7 @@ const MapController = ({ vessels, selectedVessel }) => {
         }, 150);
 
         return () => clearTimeout(timer);
-    }, [vessels.length, map]);
+    }, [vessels.length, map, fitFleet]);
 
     /* Selected vessel */
 
@@ -83,7 +82,7 @@ const MapController = ({ vessels, selectedVessel }) => {
                 duration: 1.2,
             }
         );
-    }, [selectedVessel?._id, map]);
+    }, [selectedVessel, map]);
 
     /* Fix Leaflet size when container changes */
 

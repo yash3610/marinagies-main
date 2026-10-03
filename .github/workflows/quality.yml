@@ -5,6 +5,16 @@ on:
 jobs:
   node:
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:8
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,9 +27,11 @@ jobs:
       - run: npm ci --prefix backend
       - run: npm ci --prefix frontend
       - run: npm test --prefix backend
-      - run: npx eslint src/pages/MLLab.jsx src/pages/IntelligenceCenter.jsx src/App.jsx src/components/dashboard/DashboardSidebar.jsx
-        working-directory: frontend
+      - run: npm run lint --prefix frontend
       - run: npm run build --prefix frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e --prefix frontend
       - run: npm audit --prefix backend --omit=dev --audit-level=critical
       - run: npm audit --prefix frontend --omit=dev --audit-level=critical
   python-ml:
@@ -30,8 +42,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: ml-service/requirements.txt
-      - run: python -m pip install -r ml-service/requirements.txt bandit pip-audit
+          cache-dependency-path: |
+            ml-service/requirements.txt
+            ml-service/requirements-dev.txt
+      - run: python -m pip install -r ml-service/requirements-dev.txt bandit pip-audit
       - run: python -m pytest ml-service/tests
         env:
           PYTHONPATH: ml-service

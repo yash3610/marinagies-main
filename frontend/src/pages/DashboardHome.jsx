@@ -953,6 +953,7 @@ const IncidentTrend = ({ incidents }) => {
     const width = 320;
     const height = 155;
     const padding = 20;
+    const [referenceTime] = useState(Date.now);
 
     const values = useMemo(() => {
         const days = 7;
@@ -965,7 +966,7 @@ const IncidentTrend = ({ incidents }) => {
             );
 
             const diff = Math.floor(
-                (Date.now() - date.getTime()) /
+                (referenceTime - date.getTime()) /
                 (1000 * 60 * 60 * 24)
             );
 
@@ -975,7 +976,7 @@ const IncidentTrend = ({ incidents }) => {
         });
 
         return result;
-    }, [incidents]);
+    }, [incidents, referenceTime]);
 
     const maxValue = Math.max(...values, 2);
 

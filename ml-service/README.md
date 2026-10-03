@@ -17,7 +17,7 @@ Configure the backend with `ML_SERVICE_URL=http://127.0.0.1:8000`. Do not expose
 
 ```powershell
 py -m venv ml-service/.venv
-ml-service/.venv/Scripts/python -m pip install -r ml-service/requirements.txt
+ml-service/.venv/Scripts/python -m pip install -r ml-service/requirements-dev.txt
 $env:ML_SERVICE_KEY="replace-with-a-long-random-secret"
 ml-service/.venv/Scripts/python -m uvicorn app.main:app --app-dir ml-service --port 8000
 ```

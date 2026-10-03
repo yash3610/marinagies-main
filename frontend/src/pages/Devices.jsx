@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Activity,
     Battery,
@@ -24,11 +24,7 @@ const Devices = () => {
         useState("ALL");
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadDevices();
-    }, []);
-
-    const loadDevices = async () => {
+    const loadDevices = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -45,7 +41,12 @@ const Devices = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const timer = window.setTimeout(loadDevices, 0);
+        return () => window.clearTimeout(timer);
+    }, [loadDevices]);
 
     /*
      * Temporary device representation.
