@@ -12,6 +12,7 @@ const { appendIncidentEventSafely } = require("./incidentTimeline.service");
 const { inferActiveModel } = require("./mlRuntime.service");
 const { runtimeFeatures } = require("./mlTraining.service");
 const { observeOperation } = require("./observability.service");
+const { getPolicy, getOrRefreshBaseline, effectiveThreshold, analyzeSlowDrift } = require("./ghostTraceBaseline.service");
 
 const EARTH_RADIUS_METERS = 6371000;
 const KNOT_TO_METERS_PER_SECOND = 0.514444;
@@ -57,7 +58,7 @@ const courseBetween = (from, to) => {
     ) * 180 / Math.PI + 360) % 360;
 };
 
-const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
+const analyzeGhostTrace = (telemetry, previousState, configuredThreshold, advanced = {}) => {
     const thresholdValue = Number(configuredThreshold ?? process.env.GHOSTTRACE_ALERT_THRESHOLD ?? 0.7);
     const threshold = clamp(Number.isFinite(thresholdValue) ? thresholdValue : 0.7, 0.5, 0.95);
     const current = { latitude: Number(telemetry.latitude), longitude: Number(telemetry.longitude) };
@@ -120,6 +121,12 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     const aisCrossReference = aisGapMeters === null ? 0 : clamp((aisGapMeters - 75) / 500);
     const headingMismatch = gyroHeadingDelta === null ? 0 : clamp((gyroHeadingDelta - 15) / 90);
     const speedMismatch = simulatedSpeedDelta === null ? 0 : clamp((simulatedSpeedDelta - 5) / 30);
+    const baseline = advanced.baseline;
+    const baselineDeviation = baseline?.minimumSamplesMet ? Math.max(
+        aisGapMeters === null ? 0 : clamp((aisGapMeters - Math.max(75, baseline.aisGapMeters.p95 + baseline.aisGapMeters.standardDeviation * 2)) / 500),
+        deadReckoningGapMeters === null ? 0 : clamp((deadReckoningGapMeters - Math.max(40, baseline.deadReckoningGapMeters.p95 + baseline.deadReckoningGapMeters.standardDeviation * 2)) / 500)
+    ) : 0;
+    const slowDrift = advanced.slowDrift || { detected: false, score: 0 };
 
     let score = deadReckoning * 0.25
         + impossibleSpeed * 0.2
@@ -129,6 +136,7 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     const agreeingSignals = [deadReckoning, impossibleSpeed, physicalMotionMismatch, aisCrossReference, headingMismatch, speedMismatch]
         .filter((value) => value >= 0.6).length;
     if (agreeingSignals >= 3) score += 0.1;
+    score = Math.max(score, baselineDeviation * 0.85, Number(slowDrift.score || 0));
     const confidenceScore = Number(clamp(score).toFixed(3));
     const detected = confidenceScore >= threshold;
     const confidenceLevel = confidenceScore >= 0.7 ? "HIGH" : confidenceScore >= 0.4 ? "MEDIUM" : "LOW";
@@ -139,7 +147,10 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
     if (aisCrossReference >= 0.5) causes.push("GPS and AIS positions disagree");
     if (headingMismatch >= 0.5) causes.push("GPS heading and gyrocompass heading disagree");
     if (speedMismatch >= 0.5) causes.push("reported and independently simulated speeds disagree");
-    const strongestType = aisCrossReference >= Math.max(deadReckoning, impossibleSpeed, physicalMotionMismatch)
+    if (baselineDeviation >= 0.5) causes.push("the navigation difference is outside this vessel's 90-day behavioral baseline");
+    if (slowDrift.detected) causes.push(`GPS-to-AIS separation grew by ${slowDrift.netDriftMeters} metres over ${slowDrift.durationHours} hours`);
+    const strongestType = slowDrift.detected ? "SLOW_CUMULATIVE_DRIFT"
+        : aisCrossReference >= Math.max(deadReckoning, impossibleSpeed, physicalMotionMismatch)
         ? "AIS_CROSS_REFERENCE_FAIL"
         : impossibleSpeed >= 0.6 ? "IMPLAUSIBLE_TRAJECTORY"
             : detected ? "GPS_POSITION_INCONSISTENT" : "SIGNALS_CONSISTENT";
@@ -163,6 +174,8 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
             aisPosition: Number.isFinite(reference.aisLatitude) ? { latitude: reference.aisLatitude, longitude: reference.aisLongitude } : null,
             aisGapMeters,
             mpu6050: { accelerationMagnitude, gyroscopeMagnitude, physicalMotion },
+            behavioralBaseline: baseline ? { sampleCount: baseline.sampleCount, windowDays: baseline.windowDays, minimumSamplesMet: baseline.minimumSamplesMet, aisGapMeters: baseline.aisGapMeters, deadReckoningGapMeters: baseline.deadReckoningGapMeters } : null,
+            slowDrift,
         },
         anomalyScores: {
             deadReckoning,
@@ -171,6 +184,8 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
             aisCrossReference,
             headingMismatch,
             speedMismatch,
+            behavioralBaseline: baselineDeviation,
+            slowCumulativeDrift: Number(slowDrift.score || 0),
         },
         explanation: detected ? {
             whatHappened: `GhostTrace found ${causes.length} independent navigation inconsistency signal(s).`,
@@ -188,7 +203,21 @@ const analyzeGhostTrace = (telemetry, previousState, configuredThreshold) => {
 
 const processGhostTraceDetection = async ({ telemetry, previousState, vessel, io }) => {
     const operationStartedAt = performance.now();
-    const analysis = analyzeGhostTrace(telemetry.toObject ? telemetry.toObject() : telemetry, previousState);
+    const sample = telemetry.toObject ? telemetry.toObject() : telemetry;
+    const [policy, baseline] = await Promise.all([getPolicy(), getOrRefreshBaseline(vessel._id)]);
+    const threshold = effectiveThreshold(vessel, policy);
+    const preliminary = analyzeGhostTrace(sample, previousState, threshold, { baseline: baseline.toObject ? baseline.toObject() : baseline });
+    const windowHours = Number(policy.slowDrift?.windowHours || 6);
+    const driftHistory = await GhostTraceEvent.find({
+        vessel: vessel._id,
+        createdAt: { $gte: new Date(Date.now() - windowHours * 60 * 60 * 1000) },
+        "signalsEvaluated.aisGapMeters": { $ne: null },
+    }).select("createdAt signalsEvaluated.aisGapMeters").sort({ createdAt: 1 }).limit(500).lean();
+    const slowDrift = analyzeSlowDrift([
+        ...driftHistory.map((row) => ({ at: row.createdAt, gap: row.signalsEvaluated?.aisGapMeters })),
+        { at: sample.timestamp || new Date(), gap: preliminary.signalsEvaluated.aisGapMeters },
+    ], policy.slowDrift?.toObject ? policy.slowDrift.toObject() : policy.slowDrift);
+    const analysis = analyzeGhostTrace(sample, previousState, threshold, { baseline: baseline.toObject ? baseline.toObject() : baseline, slowDrift });
     const mlInference = await inferActiveModel("GHOSTTRACE", runtimeFeatures.GHOSTTRACE(analysis), vessel._id);
     if (mlInference) {
         analysis.signalsEvaluated.mlInference = mlInference;

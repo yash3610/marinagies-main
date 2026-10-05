@@ -11,7 +11,7 @@ const ghostTraceEventSchema = new mongoose.Schema({
     confidenceLevel: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], required: true },
     alertType: {
         type: String,
-        enum: ["GPS_POSITION_INCONSISTENT", "AIS_CROSS_REFERENCE_FAIL", "IMPLAUSIBLE_TRAJECTORY", "SIGNALS_CONSISTENT"],
+        enum: ["GPS_POSITION_INCONSISTENT", "AIS_CROSS_REFERENCE_FAIL", "IMPLAUSIBLE_TRAJECTORY", "SLOW_CUMULATIVE_DRIFT", "SIGNALS_CONSISTENT"],
         required: true,
     },
     signalsEvaluated: { type: mongoose.Schema.Types.Mixed, required: true },

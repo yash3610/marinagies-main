@@ -195,7 +195,7 @@ const writeCurrentState = async (telemetry) => {
 
 const ingestTelemetry = async (input) => {
     const sample = normalizeTelemetrySample(input);
-    const vessel = await Vessel.findOne({ _id: sample.vessel, isActive: true }).select("_id name vesselId");
+    const vessel = await Vessel.findOne({ _id: sample.vessel, isActive: true }).select("_id name vesselId vesselType ghostTracePolicy");
     if (!vessel) throw Object.assign(new Error("Vessel not found or inactive"), { status: 404 });
 
     if (sample.eventId) {

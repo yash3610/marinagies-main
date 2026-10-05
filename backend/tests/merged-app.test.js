@@ -32,6 +32,7 @@ const { findDangerousKey } = require("../src/middleware/platform.middleware");
 const { observeOperation, snapshot: observabilitySnapshot, prometheus } = require("../src/services/observability.service");
 const { MODES, SEVERITY_PRIORITY, RETENTION_MS, syncBatchLimitForMode } = require("../src/services/connectivity.service");
 const { ensureExplanation, presentAlertForRole } = require("../src/services/explanation.service");
+const { metric: navigationMetric, effectiveThreshold, analyzeSlowDrift } = require("../src/services/ghostTraceBaseline.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -423,6 +424,24 @@ test("Explain Why uses real evidence, exposes ML provenance and changes action b
   const analyst=presentAlertForRole(alert,"NETWORK_SECURITY","user-1");
   assert.match(bridge.explanation.recommendedAction,/AIS/);
   assert.notEqual(bridge.explanation.recommendedAction,analyst.explanation.recommendedAction);
+});
+
+test("GhostTrace applies vessel-class policy, rolling baseline statistics and slow-drift detection", () => {
+  assert.equal(effectiveThreshold({vesselType:"TANKER"},{classThresholds:{TANKER:.64}}),.64);
+  assert.equal(effectiveThreshold({vesselType:"TANKER",ghostTracePolicy:{alertThreshold:.6}},{classThresholds:{TANKER:.64}}),.6);
+  const stats=navigationMetric([10,12,14,16,18,20]);
+  assert.equal(stats.mean,15);
+  assert.ok(stats.p95>=18);
+  const start=Date.parse("2026-01-01T00:00:00Z");
+  const drift=analyzeSlowDrift([10,55,105,160,220,280].map((gap,index)=>({at:new Date(start+index*30*60*1000),gap})),{minimumSamples:6,minimumDurationMinutes:30,minimumNetDriftMeters:150,minimumSlopeMetersPerHour:30});
+  assert.equal(drift.detected,true);
+  assert.ok(drift.score>=.7);
+  assert.match(drift.reason,/persistently/);
+  const previous={latitude:18,longitude:72,speed:10,heading:90,sourceTimestamp:new Date("2026-01-01T02:29:50Z")};
+  const analysis=analyzeGhostTrace({latitude:18,longitude:72.00049,speed:10,heading:90,timestamp:new Date("2026-01-01T02:30:00Z"),motion:{motionDetected:true},navigationReference:{aisLatitude:18,aisLongitude:72.00049,gyroHeading:90,simulatedSpeed:10}},previous,.7,{slowDrift:drift});
+  assert.equal(analysis.detected,true);
+  assert.equal(analysis.alertType,"SLOW_CUMULATIVE_DRIFT");
+  assert.match(analysis.explanation.whatCausedIt,/grew by 270 metres/);
 });
 
 test("core detection engines stay inside local performance budgets", () => {

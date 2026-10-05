@@ -108,6 +108,9 @@ const vesselSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        ghostTracePolicy: {
+            alertThreshold: { type: Number, min: 0.5, max: 0.95, default: null },
+        },
     },
     {
         timestamps: true,
