@@ -130,7 +130,7 @@ const createSequenceResponse = async ({ analysis, vessel, sourceIp, sourceDevice
         message: analysis.explanation.whatCausedIt, source: "AI_ENGINE",
         confidence: analysis.confidence, confidenceLevel: analysis.confidenceLevel,
         module: "AGENTWATCH", explanation: analysis.explanation,
-        evidence: { sequence: sequence._id, sequenceId: sequence.sequenceId, sourceIp, stages: analysis.stages, mitreTechniques: analysis.mitreTechniques },
+        evidence: { sequence: sequence._id, sequenceId: sequence.sequenceId, sourceIp, stages: analysis.stages, mitreTechniques: analysis.mitreTechniques, mlInference: analysis.mlInference || null },
     });
     sequence.alert = alert._id;
     if (analysis.confidenceLevel === "HIGH") {

@@ -11,6 +11,9 @@ import {
     Ship,
     X,
     Zap,
+    ThumbsUp,
+    ThumbsDown,
+    Sparkles,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -83,6 +86,22 @@ const Alerts = () => {
                 error.response?.data?.message ||
                 "Failed to update alert"
             );
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const submitExplanationFeedback = async (alertId, helpful) => {
+        try {
+            setUpdatingId(alertId);
+            const response = await api.post(`/alerts/${alertId}/explanation-feedback`, { helpful });
+            const updatedAlert = response.data?.alert;
+            if (updatedAlert) {
+                setAlerts((current) => current.map((item) => item._id === alertId ? updatedAlert : item));
+                setSelectedAlert(updatedAlert);
+            }
+        } catch (error) {
+            window.alert(error.response?.data?.message || "Failed to save explanation feedback");
         } finally {
             setUpdatingId(null);
         }
@@ -572,6 +591,7 @@ const Alerts = () => {
                             "FALSE_POSITIVE"
                         )
                     }
+                    onFeedback={(helpful) => submitExplanationFeedback(selectedAlert._id, helpful)}
                     updating={
                         updatingId === selectedAlert._id
                     }
@@ -816,6 +836,7 @@ const AlertDetailsModal = ({
     onAcknowledge,
     onResolve,
     onFalsePositive,
+    onFeedback,
     updating,
     formatDate,
     formatType,
@@ -940,8 +961,8 @@ const AlertDetailsModal = ({
 
                     {alert.explanation && (
                         <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-                                Why GhostTrace flagged this
+                            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
+                                <Sparkles className="h-3.5 w-3.5" /> Why {alert.module || "MarineAegis"} flagged this
                             </p>
                             <div className="mt-3 space-y-3 text-sm">
                                 <div>
@@ -949,12 +970,28 @@ const AlertDetailsModal = ({
                                     <p className="mt-1 text-slate-200">{alert.explanation.whatHappened}</p>
                                 </div>
                                 <div>
+                                    <p className="text-xs text-slate-500">Why it matters</p>
+                                    <p className="mt-1 text-slate-200">{alert.explanation.whyItMatters}</p>
+                                </div>
+                                <div>
                                     <p className="text-xs text-slate-500">Evidence</p>
                                     <p className="mt-1 text-slate-200">{alert.explanation.whatCausedIt}</p>
                                 </div>
+                                {alert.explanation.evidenceSummary?.length > 0 && <div>
+                                    <p className="text-xs text-slate-500">Evidence snapshot</p>
+                                    <ul className="mt-1 space-y-1 font-mono text-[10px] text-slate-400">{alert.explanation.evidenceSummary.map((item) => <li key={item}>{item}</li>)}</ul>
+                                </div>}
                                 <div>
                                     <p className="text-xs text-slate-500">Recommended action</p>
                                     <p className="mt-1 text-cyan-200">{alert.explanation.recommendedAction}</p>
+                                </div>
+                                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                                    <p className="text-xs text-slate-500">Decision engine</p>
+                                    {alert.explanation.decisionSupport?.used ? <p className="mt-1 text-xs text-purple-300">ML: {alert.explanation.decisionSupport.modelKey} v{alert.explanation.decisionSupport.version} | {alert.explanation.decisionSupport.algorithm || alert.explanation.decisionSupport.engine} | {alert.explanation.decisionSupport.probability}%</p> : <p className="mt-1 text-xs text-slate-300">Explainable deterministic rules (no ML model used for this alert)</p>}
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-400/10 pt-3">
+                                    <p className="text-xs text-slate-500">Was this explanation useful?</p>
+                                    <div className="flex gap-2"><button type="button" disabled={updating} onClick={() => onFeedback(true)} className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${alert.explanationFeedbackSummary?.userVote === true ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-slate-700 text-slate-400"}`}><ThumbsUp className="h-3 w-3" /> Helpful ({alert.explanationFeedbackSummary?.helpful || 0})</button><button type="button" disabled={updating} onClick={() => onFeedback(false)} className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${alert.explanationFeedbackSummary?.userVote === false ? "border-red-400/40 bg-red-400/10 text-red-300" : "border-slate-700 text-slate-400"}`}><ThumbsDown className="h-3 w-3" /> Not helpful ({alert.explanationFeedbackSummary?.notHelpful || 0})</button></div>
                                 </div>
                             </div>
                         </div>
@@ -968,7 +1005,7 @@ const AlertDetailsModal = ({
                                 <BrainIcon />
 
                                 <span className="text-xs font-semibold text-slate-300">
-                                    AI Detection Confidence
+                                    Detection Confidence
                                 </span>
                             </div>
 

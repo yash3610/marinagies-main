@@ -80,6 +80,13 @@ const alertSchema = new mongoose.Schema(
         confidenceLevel: { type: String, enum: ["LOW", "MEDIUM", "HIGH"], default: "LOW" },
         explanation: { type: mongoose.Schema.Types.Mixed, default: null },
         evidence: { type: mongoose.Schema.Types.Mixed, default: null },
+        explanationFeedback: [{
+            user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+            role: { type: String, required: true, trim: true },
+            helpful: { type: Boolean, required: true },
+            note: { type: String, trim: true, maxlength: 500, default: "" },
+            createdAt: { type: Date, default: Date.now },
+        }],
         detectionEvent: { type: mongoose.Schema.Types.ObjectId, ref: "GhostTraceEvent", default: null },
         resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
@@ -102,6 +109,11 @@ alertSchema.index({ vessel: 1 });
 alertSchema.index({ severity: 1 });
 alertSchema.index({ status: 1 });
 alertSchema.index({ detectedAt: -1 });
+
+alertSchema.pre("validate", function ensureMandatoryExplanation() {
+    const { ensureExplanation } = require("../services/explanation.service");
+    this.explanation = ensureExplanation(this);
+});
 
 const Alert = mongoose.model("Alert", alertSchema);
 

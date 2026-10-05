@@ -5,6 +5,7 @@ const {
     getAlertById,
     createAlert,
     updateAlert,
+    submitExplanationFeedback,
 } = require("../controllers/alert.controller");
 
 const {
@@ -38,6 +39,14 @@ router.put(
     authorizePermission(PERMISSIONS.ALERTS_MANAGE),
     auditAction("ALERT_UPDATE", "ALERT"),
     updateAlert
+);
+
+router.post(
+    "/:id/explanation-feedback",
+    authenticate,
+    authorizePermission(PERMISSIONS.ALERTS_VIEW),
+    auditAction("ALERT_EXPLANATION_FEEDBACK", "ALERT"),
+    submitExplanationFeedback
 );
 
 module.exports = router;

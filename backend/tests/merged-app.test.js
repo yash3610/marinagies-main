@@ -31,6 +31,7 @@ const { generateDataset, trainLogisticRegression, evaluateArtifact, predictProba
 const { findDangerousKey } = require("../src/middleware/platform.middleware");
 const { observeOperation, snapshot: observabilitySnapshot, prometheus } = require("../src/services/observability.service");
 const { MODES, SEVERITY_PRIORITY, RETENTION_MS, syncBatchLimitForMode } = require("../src/services/connectivity.service");
+const { ensureExplanation, presentAlertForRole } = require("../src/services/explanation.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -410,6 +411,18 @@ test("offline operations retain events for seven days and throttle reconnect bat
   assert.equal(syncBatchLimitForMode("CONNECTED"),500);
   assert.ok(getPermissionsForRole("NETWORK_SECURITY").includes(PERMISSIONS.CONNECTIVITY_MANAGE));
   assert.ok(!getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.CONNECTIVITY_MANAGE));
+});
+
+test("Explain Why uses real evidence, exposes ML provenance and changes action by role", () => {
+  const alert={_id:"alert-1",module:"GHOSTTRACE",type:"GPS_SPOOFING",confidence:91,message:"navigation mismatch",evidence:{signalsEvaluated:{positionDeltaMeters:684,mlInference:{modelKey:"GHOSTTRACE_SPECIALIZED_MODEL",version:3,probability:.914,engine:"PYTHON_SPECIALIZED",algorithm:"ISOLATION_FOREST_LSTM",componentScores:{isolationForest:.88,lstm:.93}}}},explanation:null,explanationFeedback:[]};
+  const explanation=ensureExplanation(alert);
+  assert.match(explanation.whatCausedIt,/684/);
+  assert.equal(explanation.decisionSupport.used,true);
+  assert.equal(explanation.decisionSupport.probability,91.4);
+  const bridge=presentAlertForRole(alert,"BRIDGE_CREW","user-1");
+  const analyst=presentAlertForRole(alert,"NETWORK_SECURITY","user-1");
+  assert.match(bridge.explanation.recommendedAction,/AIS/);
+  assert.notEqual(bridge.explanation.recommendedAction,analyst.explanation.recommendedAction);
 });
 
 test("core detection engines stay inside local performance budgets", () => {

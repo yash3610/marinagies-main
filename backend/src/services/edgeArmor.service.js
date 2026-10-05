@@ -71,7 +71,7 @@ const createDeviceAlert = async ({ device, analysis, io }) => {
             whatCausedIt: analysis.reasons.join(" "),
             recommendedAction: "Verify the physical node and firmware. Quarantine it if the anomaly cannot be explained.",
         },
-        evidence: { device: device._id, deviceId: device.deviceId, anomalyCodes: analysis.anomalyCodes, riskScore: analysis.riskScore },
+        evidence: { device: device._id, deviceId: device.deviceId, anomalyCodes: analysis.anomalyCodes, riskScore: analysis.riskScore, mlInference: analysis.mlInference || null },
     });
     device.lastAlertAt = now;
     await device.save();

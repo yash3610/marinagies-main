@@ -1,6 +1,9 @@
 const Alert = require("../models/Alert");
 const { vesselScope, canAccessVessel } = require("../utils/dataScope");
 const { emitVesselEvent } = require("../services/realtime.service");
+const { ensureExplanation, presentAlertForRole } = require("../services/explanation.service");
+
+const forViewer = (alert, req) => presentAlertForRole(alert, req.user.role, req.user.userId);
 
 // Get all alerts
 const getAlerts = async (req, res) => {
@@ -12,7 +15,7 @@ const getAlerts = async (req, res) => {
         res.status(200).json({
             success: true,
             count: alerts.length,
-            alerts,
+            alerts: alerts.map((alert) => forViewer(alert, req)),
         });
     } catch (error) {
         console.error("Get alerts error:", error);
@@ -44,7 +47,7 @@ const getAlertById = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            alert,
+            alert: forViewer(alert, req),
         });
     } catch (error) {
         console.error("Get alert error:", error);
@@ -62,7 +65,10 @@ const createAlert = async (req, res) => {
         if (!canAccessVessel(req, req.body?.vessel)) {
             return res.status(403).json({ success: false, message: "You do not have access to this vessel" });
         }
-        const alert = await Alert.create(req.body);
+        const input = { ...req.body, source: "MANUAL", module: "MANUAL" };
+        delete input.explanationFeedback;
+        input.explanation = ensureExplanation({ ...input, explanation: null });
+        const alert = await Alert.create(input);
         res.locals.auditResourceId = alert._id.toString();
 
         const populatedAlert = await Alert.findById(alert._id).populate(
@@ -80,7 +86,7 @@ const createAlert = async (req, res) => {
         res.status(201).json({
             success: true,
             message: "Alert created successfully",
-            alert: populatedAlert,
+            alert: forViewer(populatedAlert, req),
         });
     } catch (error) {
         console.error("Create alert error:", error);
@@ -136,7 +142,7 @@ const updateAlert = async (req, res) => {
         res.status(200).json({
             success: true,
             message: "Alert updated successfully",
-            alert: updatedAlert,
+            alert: forViewer(updatedAlert, req),
         });
     } catch (error) {
         console.error("Update alert error:", error);
@@ -148,9 +154,38 @@ const updateAlert = async (req, res) => {
     }
 };
 
+const submitExplanationFeedback = async (req, res) => {
+    try {
+        if (typeof req.body?.helpful !== "boolean") {
+            return res.status(400).json({ success: false, message: "helpful must be true or false" });
+        }
+        const note = String(req.body?.note || "").trim();
+        if (note.length > 500) {
+            return res.status(400).json({ success: false, message: "Feedback note cannot exceed 500 characters" });
+        }
+        const alert = await Alert.findOne({ _id: req.params.id, ...vesselScope(req) });
+        if (!alert) return res.status(404).json({ success: false, message: "Alert not found" });
+        const existing = alert.explanationFeedback.find((item) => String(item.user) === String(req.user.userId));
+        if (existing) {
+            existing.helpful = req.body.helpful;
+            existing.note = note;
+            existing.role = req.user.role;
+            existing.createdAt = new Date();
+        } else {
+            alert.explanationFeedback.push({ user: req.user.userId, role: req.user.role, helpful: req.body.helpful, note });
+        }
+        await alert.save();
+        res.locals.auditResourceId = alert._id.toString();
+        res.json({ success: true, message: "Explanation feedback saved", alert: forViewer(alert, req) });
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message || "Failed to save explanation feedback" });
+    }
+};
+
 module.exports = {
     getAlerts,
     getAlertById,
     createAlert,
     updateAlert,
+    submitExplanationFeedback,
 };
