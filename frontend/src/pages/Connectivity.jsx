@@ -84,8 +84,10 @@ const Connectivity = () => {
 
         <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70">
             <div className="border-b border-slate-800 px-4 py-3"><h2 className="text-sm font-semibold text-white">Durable event queue</h2></div>
-            <div className="grid grid-cols-[.7fr_.7fr_1fr_.6fr] border-b border-slate-800 px-4 py-3 text-[10px] uppercase text-slate-600"><span>Priority</span><span>Type</span><span>Vessel / source</span><span>Status</span></div>
-            {!events.length ? <div className="p-10 text-center text-xs text-slate-600">Queue is empty. Switch offline and run telemetry simulation to store events.</div> : events.map((event) => <div key={event._id} className="grid grid-cols-[.7fr_.7fr_1fr_.6fr] items-center border-b border-slate-800/60 px-4 py-3 text-xs"><span className={severityStyle[event.severity]}>{event.severity}</span><span className="text-slate-300">{event.eventType}</span><span className="truncate text-slate-400">{event.vessel?.name || event.sourceRef || "Platform"}</span><span className="text-slate-300">{event.status}</span></div>)}
+            <div className="overflow-x-auto"><div className="min-w-[38rem]">
+                <div className="grid grid-cols-[.7fr_.7fr_1fr_.6fr] border-b border-slate-800 px-4 py-3 text-[10px] uppercase text-slate-600"><span>Priority</span><span>Type</span><span>Vessel / source</span><span>Status</span></div>
+                {!events.length ? <div className="p-10 text-center text-xs text-slate-600">Queue is empty. Switch offline and run telemetry simulation to store events.</div> : events.map((event) => <div key={event._id} className="grid grid-cols-[.7fr_.7fr_1fr_.6fr] items-center border-b border-slate-800/60 px-4 py-3 text-xs"><span className={severityStyle[event.severity]}>{event.severity}</span><span className="text-slate-300">{event.eventType}</span><span className="truncate text-slate-400">{event.vessel?.name || event.sourceRef || "Platform"}</span><span className="text-slate-300">{event.status}</span></div>)}
+            </div></div>
         </section>
     </div>;
 };

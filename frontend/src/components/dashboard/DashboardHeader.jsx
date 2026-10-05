@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bell, CheckCheck, ExternalLink, ShieldCheck } from "lucide-react";
-import { Link } from "react-router-dom";
+import { AlertTriangle, Bell, CheckCheck, ExternalLink, Menu, ShieldCheck } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import api from "../../services/api";
 import { createSocket } from "../../services/socket";
+import { useAuth } from "../../hooks/useAuth";
 
 const NOTIFICATION_SEEN_KEY = "marineaegis.notifications.lastSeen";
 
@@ -11,6 +12,32 @@ const severityStyles = {
     HIGH: "border-orange-500/30 bg-orange-500/10 text-orange-400",
     MEDIUM: "border-amber-500/30 bg-amber-500/10 text-amber-400",
     LOW: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
+};
+
+const pageMeta = {
+    "/dashboard": ["Command overview", "Fleet posture and active defense signals"],
+    "/dashboard/fleet": ["Fleet overview", "Vessel status, risk and operational readiness"],
+    "/dashboard/monitoring": ["Live monitoring", "Real-time navigation and onboard telemetry"],
+    "/dashboard/navigation": ["Navigation intelligence", "Trusted position and route validation"],
+    "/dashboard/attack-simulation": ["Attack simulation", "Controlled maritime threat demonstrations"],
+    "/dashboard/soc": ["Security operations", "Correlated detection and response workspace"],
+    "/dashboard/alerts": ["Security alerts", "Prioritized findings and operator decisions"],
+    "/dashboard/incidents": ["Incident response", "Investigation, replay and containment"],
+    "/dashboard/digital-twin": ["Digital twin", "Safety simulation before operational action"],
+    "/dashboard/devices": ["EdgeArmor", "Onboard device integrity and containment"],
+    "/dashboard/network": ["NetGuard", "DNS and vessel network defense"],
+    "/dashboard/agentwatch": ["AgentWatch", "Autonomous attack sequence detection"],
+    "/dashboard/fleet-risk": ["FleetChoke", "Supplier and fleet dependency risk"],
+    "/dashboard/sarverify": ["SARVerify", "Distress signal authenticity"],
+    "/dashboard/rocshield": ["ROCShield", "Remote command integrity"],
+    "/dashboard/recovery": ["RecoveryShield", "Ransomware containment and recovery"],
+    "/dashboard/intelligence": ["Intelligence center", "Fleet-wide evidence and learning"],
+    "/dashboard/ml-lab": ["ML training lab", "Measured model training and deployment"],
+    "/dashboard/reports": ["Reports", "Operational and compliance evidence"],
+    "/dashboard/audit-logs": ["Audit trail", "Immutable operator and system activity"],
+    "/dashboard/connectivity": ["Offline operations", "Satellite link and store-and-forward queue"],
+    "/dashboard/users": ["Access management", "Users, roles and vessel scope"],
+    "/dashboard/settings": ["Platform settings", "Detection policy and account controls"],
 };
 
 const getAlertTime = (alert) =>
@@ -36,7 +63,10 @@ const formatAlertTime = (alert) => {
     });
 };
 
-const DashboardHeader = () => {
+const DashboardHeader = ({ onMenu }) => {
+    const location = useLocation();
+    const { user } = useAuth();
+    const [title, subtitle] = pageMeta[location.pathname] || ["MarineAegis", "Autonomous maritime cyber defense"];
     const [alerts, setAlerts] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [lastSeen, setLastSeen] = useState(() =>
@@ -126,19 +156,24 @@ const DashboardHeader = () => {
     };
 
     return (
-        <header className="relative z-40 h-20 shrink-0 border-b border-slate-800 bg-[#07111f]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-7">
-            <div className="min-w-0">
-                <h2 className="truncate text-base md:text-lg font-semibold text-white">Security Operations Center</h2>
-                <p className="hidden sm:block text-xs text-slate-500 mt-1">Autonomous Maritime Cyber Defense Platform</p>
+        <header className="relative z-30 flex h-[4.75rem] shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#07101d]/75 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+                <button type="button" aria-label="Open navigation" onClick={onMenu} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.03] text-slate-400 transition hover:text-white lg:hidden"><Menu className="h-5 w-5" /></button>
+                <div className="min-w-0">
+                    <h2 className="truncate text-[15px] font-semibold tracking-tight text-white sm:text-base">{title}</h2>
+                    <p className="mt-0.5 hidden truncate text-[11px] text-slate-500 sm:block">{subtitle}</p>
+                </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-3 md:gap-4">
-                <div className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-lg border ${hasCriticalAlert ? "border-red-500/25 bg-red-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div className={`hidden items-center gap-2 rounded-xl border px-3 py-2 lg:flex ${hasCriticalAlert ? "border-red-500/20 bg-red-500/[0.06]" : "border-emerald-500/15 bg-emerald-500/[0.04]"}`}>
                     <span className={`w-2 h-2 rounded-full animate-pulse ${hasCriticalAlert ? "bg-red-400" : "bg-emerald-400"}`} />
                     <span className={`text-xs ${hasCriticalAlert ? "text-red-400" : "text-emerald-400"}`}>
                         {hasCriticalAlert ? "Critical Alert Active" : activeAlerts.length ? `${activeAlerts.length} Active Alerts` : "Systems Operational"}
                     </span>
                 </div>
+                <div className="hidden h-8 w-px bg-white/[0.06] sm:block" />
+                <div className="hidden text-right xl:block"><p className="text-[11px] font-medium text-slate-300">{user?.name || "Operator"}</p><p className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-600">{String(user?.role || "USER").replaceAll("_", " ")}</p></div>
 
                 <div ref={notificationRef} className="relative">
                     <button

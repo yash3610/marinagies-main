@@ -515,7 +515,8 @@ const NavigationMap = () => {
                     left-1/2
                     top-4
                     z-[1000]
-                    w-[320px]
+                    w-[calc(100%-2rem)]
+                    sm:w-[320px]
                     -translate-x-1/2
                 "
             >
