@@ -23,6 +23,7 @@ const rocShieldRoutes = require("./routes/rocShield.routes");
 const recoveryShieldRoutes = require("./routes/recoveryShield.routes");
 const intelligenceRoutes = require("./routes/intelligence.routes");
 const observabilityRoutes = require("./routes/observability.routes");
+const connectivityRoutes = require("./routes/connectivity.routes");
 const mongoose = require("mongoose");
 const { requestContext, apiRateLimit, rejectDangerousInput } = require("./middleware/platform.middleware");
 
@@ -103,6 +104,7 @@ app.use("/api/rocshield", rocShieldRoutes);
 app.use("/api/recoveryshield", recoveryShieldRoutes);
 app.use("/api/intelligence", intelligenceRoutes);
 app.use("/api/observability", observabilityRoutes);
+app.use("/api/connectivity", connectivityRoutes);
 
 // Website forms share the existing database and backend.
 app.use("/api/forms", formRoutes);

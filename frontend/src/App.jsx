@@ -27,6 +27,7 @@ const AuditLogs = lazy(() => import("./pages/AuditLogs"));
 const AttackSimulation = lazy(() => import("./pages/AttackSimulation"));
 const IntelligenceCenter = lazy(() => import("./pages/IntelligenceCenter"));
 const MLLab = lazy(() => import("./pages/MLLab"));
+const Connectivity = lazy(() => import("./pages/Connectivity"));
 
 function WebsiteRedirect() {
   useEffect(() => { window.location.replace("/"); }, []);
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="ml-lab" element={permitted("fleet-learning:view", MLLab)} />
         <Route path="users" element={permitted("users:manage", Users)} />
         <Route path="settings" element={permitted("settings:view", Settings)} />
+        <Route path="connectivity" element={permitted("connectivity:view", Connectivity)} />
         <Route path="audit-logs" element={permitted("audit-logs:view", AuditLogs)} />
       </Route>
     </Route>

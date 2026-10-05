@@ -67,13 +67,32 @@ const persistAuditLog = async (data) => {
         previousHash,
     };
 
-    return AuditLog.create({
+    const auditLog = await AuditLog.create({
         ...data,
         ...hashPayload,
         entryHash: calculateEntryHash(hashPayload),
         createdAt,
         updatedAt: createdAt,
     });
+    const { shouldQueueForShore, queueOfflineEvent } = require("./connectivity.service");
+    if (await shouldQueueForShore()) {
+        await queueOfflineEvent({
+            eventKey: `audit:${auditLog._id}`,
+            eventType: "AUDIT",
+            severity: data.status === "FAILED" ? "HIGH" : "LOW",
+            vessel: data.vessel || null,
+            sourceRef: String(auditLog._id),
+            payload: {
+                sequenceNumber: auditLog.sequenceNumber,
+                action: auditLog.action,
+                resource: auditLog.resource,
+                status: auditLog.status,
+                entryHash: auditLog.entryHash,
+                createdAt: auditLog.createdAt,
+            },
+        });
+    }
+    return auditLog;
 };
 
 const writeAuditLog = (data) => {

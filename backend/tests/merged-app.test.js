@@ -30,6 +30,7 @@ const { hashContent } = require("../src/services/compliance.service");
 const { generateDataset, trainLogisticRegression, evaluateArtifact, predictProbability } = require("../src/services/mlTraining.service");
 const { findDangerousKey } = require("../src/middleware/platform.middleware");
 const { observeOperation, snapshot: observabilitySnapshot, prometheus } = require("../src/services/observability.service");
+const { MODES, SEVERITY_PRIORITY, RETENTION_MS, syncBatchLimitForMode } = require("../src/services/connectivity.service");
 let server, base;
 before(async () => {
   server = await new Promise(resolve => { const instance = app.listen(0, "127.0.0.1", () => resolve(instance)); });
@@ -397,6 +398,18 @@ test("platform hardening rejects operator injection and exports bounded metrics"
   const metric=observabilitySnapshot().operations.find(item=>item.name==="test_detection");
   assert.equal(metric.count,1);
   assert.match(prometheus(),/marineaegis_operation_total\{name="test_detection"\} 1/);
+});
+
+test("offline operations retain events for seven days and throttle reconnect batches", () => {
+  assert.deepEqual(MODES,["CONNECTED","LIMITED","MINIMAL","OFFLINE"]);
+  assert.equal(RETENTION_MS,7*24*60*60*1000);
+  assert.ok(SEVERITY_PRIORITY.CRITICAL>SEVERITY_PRIORITY.HIGH);
+  assert.ok(SEVERITY_PRIORITY.HIGH>SEVERITY_PRIORITY.LOW);
+  assert.equal(syncBatchLimitForMode("MINIMAL"),10);
+  assert.equal(syncBatchLimitForMode("LIMITED"),50);
+  assert.equal(syncBatchLimitForMode("CONNECTED"),500);
+  assert.ok(getPermissionsForRole("NETWORK_SECURITY").includes(PERMISSIONS.CONNECTIVITY_MANAGE));
+  assert.ok(!getPermissionsForRole("COMPLIANCE_AUDITOR").includes(PERMISSIONS.CONNECTIVITY_MANAGE));
 });
 
 test("core detection engines stay inside local performance budgets", () => {

@@ -7,6 +7,7 @@ const { ingestTelemetry } = require("../services/telemetry.service");
 const { emitTelemetry } = require("../services/realtime.service");
 const { processGhostTraceDetection } = require("../services/ghostTrace.service");
 const { processEdgeArmorTelemetry } = require("../services/edgeArmor.service");
+const { shouldQueueForShore, queueOfflineEvent } = require("../services/connectivity.service");
 
 const toLegacyTelemetry = (state) => state && ({
     _id: state.telemetry,
@@ -151,6 +152,24 @@ const createTelemetry = async (req, res) => {
                 vessel: item.vessel,
             }));
         if (liveRecords.length) emitTelemetry(req.app.get("io"), liveRecords);
+        const queueForShore = await shouldQueueForShore();
+        if (queueForShore) {
+            await Promise.all(results.filter((item) => !item.duplicate).map((item) => queueOfflineEvent({
+                eventKey: `telemetry:${item.telemetry.eventId || item.telemetry._id}`,
+                eventType: "TELEMETRY",
+                severity: item.ghostTrace?.event?.detected ? "CRITICAL" : item.edgeArmor?.analysis?.riskScore >= 70 ? "HIGH" : "LOW",
+                vessel: item.vessel._id,
+                sourceRef: String(item.telemetry._id),
+                payload: {
+                    eventId: item.telemetry.eventId || String(item.telemetry._id),
+                    sourceTimestamp: item.telemetry.timestamp,
+                    receivedAt: item.telemetry.receivedAt,
+                    ghostTraceDetected: Boolean(item.ghostTrace?.event?.detected),
+                    ghostTraceConfidence: item.ghostTrace?.event?.confidenceScore || 0,
+                    edgeArmorRisk: item.edgeArmor?.analysis?.riskScore || 0,
+                },
+            })));
+        }
         const summaries = results.map(({ telemetry, duplicate, isLatest, ghostTrace, edgeArmor }) => ({
             telemetry,
             duplicate,

@@ -23,6 +23,7 @@ import {
     RadioTower,
     DatabaseBackup,
     BrainCircuit,
+    Satellite,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -47,6 +48,7 @@ const operations = [
     { label: "Intelligence Center", path: "/dashboard/intelligence", icon: BrainCircuit, permission: "threat-intelligence:view" },
     { label: "ML Training Lab", path: "/dashboard/ml-lab", icon: BrainCircuit, permission: "fleet-learning:view" },
     { label: "Audit Logs", path: "/dashboard/audit-logs", icon: ScrollText, permission: "audit-logs:view" },
+    { label: "Offline Operations", path: "/dashboard/connectivity", icon: Satellite, permission: "connectivity:view" },
 ];
 
 const linkClass = ({ isActive }) =>
