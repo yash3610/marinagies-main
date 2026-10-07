@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Anchor,
     Ship,
@@ -19,15 +19,28 @@ import { createSocket } from "../services/socket";
 
 const NATIVE_POPUP_ENABLED = false;
 
+const formatMapNumber = (value, digits = 1, fallback = "--") => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(digits) : fallback;
+};
+
 /* ========================================================= */
 /* MAP CONTROLLER */
 /* ========================================================= */
 
 const MapController = ({ vessels, selectedVessel }) => {
     const map = useMap();
+    const vesselsRef = useRef(vessels);
+    const selectedVesselRef = useRef(selectedVessel);
+    const initialFitComplete = useRef(false);
+
+    useEffect(() => {
+        vesselsRef.current = vessels;
+        selectedVesselRef.current = selectedVessel;
+    }, [vessels, selectedVessel]);
 
     const fitFleet = useCallback(() => {
-        const validVessels = vessels.filter(
+        const validVessels = vesselsRef.current.filter(
             (vessel) =>
                 typeof vessel.latitude === "number" &&
                 typeof vessel.longitude === "number"
@@ -47,12 +60,13 @@ const MapController = ({ vessels, selectedVessel }) => {
             maxZoom: 6,
             animate: true,
         });
-    }, [map, vessels]);
+    }, [map]);
 
     /* Initial fleet positioning */
 
     useEffect(() => {
-        if (!vessels.length) return;
+        if (!vessels.length || initialFitComplete.current) return;
+        initialFitComplete.current = true;
 
         const timer = setTimeout(() => {
             fitFleet();
@@ -65,26 +79,27 @@ const MapController = ({ vessels, selectedVessel }) => {
     /* Selected vessel */
 
     useEffect(() => {
-        if (!selectedVessel) return;
+        const vessel = selectedVesselRef.current;
+        if (!vessel) return;
 
         if (
-            typeof selectedVessel.latitude !== "number" ||
-            typeof selectedVessel.longitude !== "number"
+            typeof vessel.latitude !== "number" ||
+            typeof vessel.longitude !== "number"
         ) {
             return;
         }
 
         map.flyTo(
             [
-                selectedVessel.latitude,
-                selectedVessel.longitude,
+                vessel.latitude,
+                vessel.longitude,
             ],
             Math.max(map.getZoom(), 6),
             {
                 duration: 1.2,
             }
         );
-    }, [selectedVessel, map]);
+    }, [selectedVessel?._id, map]);
 
     /* Fix Leaflet size when container changes */
 
@@ -130,7 +145,7 @@ const MapController = ({ vessels, selectedVessel }) => {
                 type="button"
                 onClick={centerFleet}
                 title="Center Fleet"
-                className="absolute z-[1000] top-20 left-3 w-9 h-9 rounded-lg border border-slate-700 bg-slate-950/90 backdrop-blur-md flex items-center justify-center text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50 transition shadow-lg"
+                className="absolute z-[1000] top-3 left-14 w-9 h-9 rounded-lg border border-slate-700 bg-slate-950/90 backdrop-blur-md flex items-center justify-center text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50 transition shadow-lg"
             >
                 <Crosshair className="w-4 h-4" />
             </button>
@@ -141,7 +156,7 @@ const MapController = ({ vessels, selectedVessel }) => {
                 type="button"
                 onClick={fullscreen}
                 title="Fullscreen"
-                className="absolute z-[1000] top-20 left-14 w-9 h-9 rounded-lg border border-slate-700 bg-slate-950/90 backdrop-blur-md flex items-center justify-center text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50 transition shadow-lg"
+                className="absolute z-[1000] top-3 left-24 w-9 h-9 rounded-lg border border-slate-700 bg-slate-950/90 backdrop-blur-md flex items-center justify-center text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50 transition shadow-lg"
             >
                 <Maximize2 className="w-4 h-4" />
             </button>
@@ -741,7 +756,7 @@ const VesselMap = () => {
             {/* ================================================= */}
 
             {selectedVessel && (
-                <div className="absolute z-[950] bottom-4 left-4 w-72 rounded-xl border border-slate-700 bg-slate-950/95 backdrop-blur-xl p-4 shadow-2xl">
+                <div className="absolute z-[950] bottom-4 left-4 w-72 max-w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-slate-700 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl">
 
                     <div className="flex items-start justify-between">
                         <div>
@@ -775,7 +790,7 @@ const VesselMap = () => {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="mt-4 grid min-w-0 grid-cols-2 gap-3">
                         <InfoItem
                             label="Status"
                             value={
@@ -790,12 +805,12 @@ const VesselMap = () => {
 
                         <InfoItem
                             label="Speed"
-                            value={`${selectedVessel.speed ?? 0} kn`}
+                            value={`${formatMapNumber(selectedVessel.speed)} kn`}
                         />
 
                         <InfoItem
                             label="Heading"
-                            value={`${selectedVessel.heading ?? 0}°`}
+                            value={`${formatMapNumber(selectedVessel.heading, 0)}°`}
                         />
                     </div>
 
@@ -965,12 +980,12 @@ const PopupValue = ({ label, value }) => {
 
 const InfoItem = ({ label, value }) => {
     return (
-        <div>
+        <div className="min-w-0">
             <p className="text-[9px] uppercase tracking-wider text-slate-600">
                 {label}
             </p>
 
-            <p className="text-xs text-slate-300 mt-1">
+            <p className="mt-1 truncate text-xs text-slate-300" title={String(value ?? "")}>
                 {value}
             </p>
         </div>

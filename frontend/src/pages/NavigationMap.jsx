@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     MapContainer,
     TileLayer,
@@ -229,33 +229,40 @@ const MapController = ({
     vessels,
 }) => {
     const map = useMap();
+    const selectedVesselRef = useRef(selectedVessel);
+    const selectedVesselId = selectedVessel?.vessel?._id || selectedVessel?.vessel || null;
+
+    useEffect(() => {
+        selectedVesselRef.current = selectedVessel;
+    }, [selectedVessel]);
 
     // ----------------------------------------
     // CENTER SELECTED VESSEL
     // ----------------------------------------
     useEffect(() => {
-        if (!selectedVessel) {
+        const vessel = selectedVesselRef.current;
+        if (!vessel) {
             return;
         }
 
         if (
-            typeof selectedVessel.latitude !== "number" ||
-            typeof selectedVessel.longitude !== "number"
+            typeof vessel.latitude !== "number" ||
+            typeof vessel.longitude !== "number"
         ) {
             return;
         }
 
         map.flyTo(
             [
-                selectedVessel.latitude,
-                selectedVessel.longitude,
+                vessel.latitude,
+                vessel.longitude,
             ],
             9,
             {
                 duration: 1.2,
             }
         );
-    }, [selectedVessel, map]);
+    }, [selectedVesselId, map]);
 
     // ----------------------------------------
     // CENTER ALL VESSELS
@@ -1139,7 +1146,7 @@ const NavigationMap = () => {
                             {/* ========================================
                                 VESSEL POPUP
                             ======================================== */}
-                            <Popup>
+                            <Popup autoPan={false}>
 
                                 <div
                                     className="

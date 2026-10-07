@@ -102,7 +102,26 @@ const DashboardHome = () => {
                 telemetry: item.telemetry || item,
             }));
 
-            setTelemetry(formattedTelemetry);
+            setTelemetry((current) => {
+                const vesselIdOf = (item) => String(
+                    item?.vessel?._id ||
+                    item?.vessel ||
+                    item?.telemetry?.vessel?._id ||
+                    item?.telemetry?.vessel ||
+                    ""
+                );
+                const merged = new Map(
+                    current.map((item) => [vesselIdOf(item), item])
+                );
+
+                formattedTelemetry.forEach((item) => {
+                    const vesselId = vesselIdOf(item);
+                    if (vesselId) merged.set(vesselId, item);
+                });
+
+                merged.delete("");
+                return [...merged.values()];
+            });
         });
 
         socket.on("disconnect", () => {
@@ -772,7 +791,7 @@ const TelemetryCompact = ({ item }) => {
                 <TelemetryMini
                     icon={Navigation}
                     label="Heading"
-                    value={`${data?.heading ?? 0}°`}
+                    value={`${formatNumber(data?.heading, 0)}°`}
                 />
 
                 <TelemetryMini
