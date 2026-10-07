@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -363,7 +364,7 @@ const Alerts = () => {
 
                     {/* Severity */}
 
-                    <select
+                    <DarkSelect
                         value={severity}
                         onChange={(e) =>
                             setSeverity(e.target.value)
@@ -385,11 +386,11 @@ const Alerts = () => {
                         <option value="LOW">
                             Low
                         </option>
-                    </select>
+                    </DarkSelect>
 
                     {/* Status */}
 
-                    <select
+                    <DarkSelect
                         value={status}
                         onChange={(e) =>
                             setStatus(e.target.value)
@@ -407,11 +408,11 @@ const Alerts = () => {
                             Resolved
                         </option>
                         <option value="FALSE_POSITIVE">False Positive</option>
-                    </select>
+                    </DarkSelect>
 
                     {/* Vessel */}
 
-                    <select
+                    <DarkSelect
                         value={vesselFilter}
                         onChange={(e) =>
                             setVesselFilter(e.target.value)
@@ -430,11 +431,11 @@ const Alerts = () => {
                                 {vessel.name}
                             </option>
                         ))}
-                    </select>
+                    </DarkSelect>
 
                     {/* Type */}
 
-                    <select
+                    <DarkSelect
                         value={typeFilter}
                         onChange={(e) =>
                             setTypeFilter(e.target.value)
@@ -450,7 +451,7 @@ const Alerts = () => {
                                 {formatType(type)}
                             </option>
                         ))}
-                    </select>
+                    </DarkSelect>
                 </div>
             </div>
 

@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -976,7 +977,7 @@ const FilterSelect = ({
 }) => {
     return (
         <div className="relative">
-            <select
+            <DarkSelect
                 value={value}
                 onChange={(e) =>
                     onChange(e.target.value)
@@ -991,7 +992,7 @@ const FilterSelect = ({
                         {option.label}
                     </option>
                 ))}
-            </select>
+            </DarkSelect>
 
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
         </div>
@@ -1168,9 +1169,9 @@ const UserModal = ({
                             <div className="p-4 sm:p-5">
                                 <label className="mb-2 block text-[10px] font-medium uppercase tracking-[.14em] text-slate-500">Platform role</label>
                                 <div className="relative">
-                                    <select name="role" value={form.role} onChange={onChange} className="user-drawer-input appearance-none pr-10">
+                                    <DarkSelect name="role" value={form.role} onChange={onChange} className="user-drawer-input appearance-none pr-10">
                                         {ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
-                                    </select>
+                                    </DarkSelect>
                                     <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
                                 </div>
                                 <div className="mt-3 flex items-start gap-2 rounded-xl border border-indigo-400/10 bg-indigo-400/[0.04] px-3.5 py-3">

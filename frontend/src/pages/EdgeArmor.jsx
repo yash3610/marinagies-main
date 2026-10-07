@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Cpu, FlaskConical, LockKeyhole, RefreshCw, Search, ShieldCheck, UnlockKeyhole, Wifi, WifiOff } from "lucide-react";
 import api from "../services/api";
@@ -141,16 +142,16 @@ const EdgeArmor = () => {
                             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search devices" className="h-9 w-44 rounded-lg border border-slate-800 bg-slate-900 pl-9 pr-3 text-xs text-slate-300 outline-none" />
                         </div>
-                        <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-9 rounded-lg border border-slate-800 bg-slate-900 px-3 text-xs text-slate-300">
+                        <DarkSelect value={status} onChange={(event) => setStatus(event.target.value)} className="h-9 rounded-lg border border-slate-800 bg-slate-900 px-3 text-xs text-slate-300">
                             {['ALL', 'ONLINE', 'WARNING', 'OFFLINE', 'QUARANTINED'].map((item) => <option key={item}>{item}</option>)}
-                        </select>
+                        </DarkSelect>
                         {hasPermission("devices:manage") && (
-                            <select value={fault} onChange={(event) => setFault(event.target.value)} className="h-9 rounded-lg border border-orange-400/20 bg-orange-400/5 px-3 text-xs text-orange-300">
+                            <DarkSelect value={fault} onChange={(event) => setFault(event.target.value)} className="h-9 rounded-lg border border-orange-400/20 bg-orange-400/5 px-3 text-xs text-orange-300">
                                 <option value="HIGH_TEMPERATURE">Mock: High temperature</option>
                                 <option value="LOW_SIGNAL">Mock: Low signal</option>
                                 <option value="FIRMWARE_TAMPER">Mock: Firmware tamper</option>
                                 <option value="HEARTBEAT_LOSS">Mock: Heartbeat loss</option>
-                            </select>
+                            </DarkSelect>
                         )}
                     </div>
                 </div>

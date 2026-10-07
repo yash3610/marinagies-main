@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Activity,
@@ -1004,7 +1005,7 @@ const ReportSelect = ({
                 {label}
             </label>
 
-            <select
+            <DarkSelect
                 value={value}
                 onChange={(e) =>
                     onChange(e.target.value)
@@ -1021,7 +1022,7 @@ const ReportSelect = ({
                         </option>
                     )
                 )}
-            </select>
+            </DarkSelect>
         </div>
     );
 };

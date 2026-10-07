@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     AlertTriangle,
@@ -249,7 +250,7 @@ const AuditLogs = () => {
                     <div className="flex items-center gap-2">
                         <Filter className="h-3.5 w-3.5 text-slate-600" />
 
-                        <select
+                        <DarkSelect
                             value={actionFilter}
                             onChange={(e) =>
                                 setActionFilter(
@@ -270,12 +271,12 @@ const AuditLogs = () => {
                                     {formatAction(action)}
                                 </option>
                             ))}
-                        </select>
+                        </DarkSelect>
                     </div>
 
                     {/* STATUS */}
 
-                    <select
+                    <DarkSelect
                         value={statusFilter}
                         onChange={(e) =>
                             setStatusFilter(
@@ -295,7 +296,7 @@ const AuditLogs = () => {
                         <option value="FAILED">
                             Failed
                         </option>
-                    </select>
+                    </DarkSelect>
                 </div>
             </div>
 

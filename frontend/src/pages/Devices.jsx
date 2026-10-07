@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Activity,
@@ -268,7 +269,7 @@ const Devices = () => {
 
                                 {/* FILTER */}
 
-                                <select
+                                <DarkSelect
                                     value={statusFilter}
                                     onChange={(e) =>
                                         setStatusFilter(
@@ -289,7 +290,7 @@ const Devices = () => {
                                     <option value="OFFLINE">
                                         Offline
                                     </option>
-                                </select>
+                                </DarkSelect>
                             </div>
                         </div>
                     </div>

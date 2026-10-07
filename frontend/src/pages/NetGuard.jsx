@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, Ban, CheckCircle2, Globe2, RefreshCw, Router, Satellite, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import api from "../services/api";
@@ -139,8 +140,8 @@ const NetGuard = () => {
                 <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-5">
                     <div className="mb-4 flex items-center gap-2"><Globe2 className="h-4 w-4 text-cyan-400" /><h2 className="text-sm font-semibold text-white">Policy Test Console</h2><span className="rounded bg-orange-400/10 px-2 py-1 text-[9px] text-orange-300">MOCK INPUT</span></div>
                     <div className="grid gap-3 lg:grid-cols-6">
-                        <Field label="Vessel"><select value={vessel} onChange={(event) => setVessel(event.target.value)} className="netguard-input"><option value="">Select vessel</option>{vessels.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select></Field>
-                        <Field label="Event"><select value={eventType} onChange={(event) => setEventType(event.target.value)} className="netguard-input"><option value="DNS_QUERY">DNS Query</option><option value="NETWORK_CONNECTION">Segment Connection</option></select></Field>
+                        <Field label="Vessel"><DarkSelect value={vessel} onChange={(event) => setVessel(event.target.value)} className="netguard-input"><option value="">Select vessel</option>{vessels.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</DarkSelect></Field>
+                        <Field label="Event"><DarkSelect value={eventType} onChange={(event) => setEventType(event.target.value)} className="netguard-input"><option value="DNS_QUERY">DNS Query</option><option value="NETWORK_CONNECTION">Segment Connection</option></DarkSelect></Field>
                         {eventType === "DNS_QUERY" ? (
                             <div className="lg:col-span-2"><Field label="Domain"><input value={domain} onChange={(event) => setDomain(event.target.value)} className="netguard-input" /></Field></div>
                         ) : (
@@ -178,7 +179,7 @@ const NetGuard = () => {
 const toneClasses = { cyan: "text-cyan-400", emerald: "text-emerald-400", red: "text-red-400", orange: "text-orange-400" };
 const Stat = ({ icon: Icon, label, value, tone }) => <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><Icon className={`h-4 w-4 ${toneClasses[tone]}`} /><p className="mt-3 text-[10px] uppercase tracking-wider text-slate-600">{label}</p><p className="mt-1 text-2xl font-bold text-white">{value}</p></div>;
 const Field = ({ label, children }) => <label className="block"><span className="mb-2 block text-[9px] uppercase tracking-wider text-slate-600">{label}</span>{children}</label>;
-const SegmentSelect = ({ value, onChange }) => <select value={value} onChange={(event) => onChange(event.target.value)} className="netguard-input">{["OT", "IT", "CREW", "MARINEAEGIS", "UPLINK"].map((item) => <option key={item}>{item}</option>)}</select>;
+const SegmentSelect = ({ value, onChange }) => <DarkSelect value={value} onChange={(event) => onChange(event.target.value)} className="netguard-input">{["OT", "IT", "CREW", "MARINEAEGIS", "UPLINK"].map((item) => <option key={item}>{item}</option>)}</DarkSelect>;
 const Info = ({ label, value }) => <div className="flex justify-between gap-3"><span className="text-slate-600">{label}</span><span className="text-right text-slate-300">{value}</span></div>;
 const EventRow = ({ event }) => <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium text-slate-200">{event.domain || `${event.sourceSegment} → ${event.destinationSegment}`}</p><span className={`rounded-full border px-2 py-1 text-[9px] font-semibold ${verdictStyles[event.verdict]}`}>{event.verdict}</span>{event.simulated && <span className="text-[9px] text-orange-400">MOCK</span>}</div><p className="mt-1 text-[10px] text-slate-500">{event.vessel?.name || "--"} · {event.sourceDevice} · {event.satelliteProvider || "local"}</p><p className="mt-2 text-xs leading-5 text-slate-500">{event.reason}</p></div><div className="shrink-0 text-right"><p className="text-xs font-semibold text-cyan-400">{event.confidence}%</p><p className="mt-1 text-[9px] text-slate-700">{new Date(event.timestamp).toLocaleTimeString()}</p></div></div></div>;
 

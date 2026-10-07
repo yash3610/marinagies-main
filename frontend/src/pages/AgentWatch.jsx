@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bot, CheckCircle2, FastForward, RefreshCw, Search, ShieldAlert, ShieldOff, XCircle } from "lucide-react";
 import api from "../services/api";
@@ -107,7 +108,7 @@ const AgentWatch = () => {
             {hasPermission("network:manage") && (
                 <div className="rounded-xl border border-purple-400/15 bg-purple-400/[0.03] p-5">
                     <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                        <label className="flex-1"><span className="mb-2 block text-[9px] uppercase tracking-wider text-slate-600">Demo vessel</span><select value={vessel} onChange={(event) => setVessel(event.target.value)} className="netguard-input"><option value="">Select vessel</option>{vessels.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select></label>
+                        <label className="flex-1"><span className="mb-2 block text-[9px] uppercase tracking-wider text-slate-600">Demo vessel</span><DarkSelect value={vessel} onChange={(event) => setVessel(event.target.value)} className="netguard-input"><option value="">Select vessel</option>{vessels.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</DarkSelect></label>
                         <button type="button" disabled={busy || !vessel} onClick={() => execute("simulate")} className="h-10 rounded-lg border border-purple-400/20 bg-purple-400/10 px-5 text-xs font-semibold text-purple-300 disabled:opacity-40">Simulate Machine-Speed Attack</button>
                     </div>
                     <p className="mt-3 text-[10px] text-slate-600">Generates Recon → Credential Attack → Lateral Movement → Exfiltration events at 500 ms intervals using a TEST-NET source IP.</p>

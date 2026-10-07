@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, CircleStop, DatabaseBackup, LifeBuoy, Navigation, Play, Radio, RotateCcw, ShieldAlert, Siren } from "lucide-react";
 import api from "../services/api";
@@ -97,13 +98,13 @@ const AttackSimulation = () => {
                         </div>
                     </div>
                 </div>
-                <select
+                <DarkSelect
                     value={selectedVesselId}
                     onChange={(event) => setSelectedVesselId(event.target.value)}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                 >
                     {vessels.map((vessel) => <option key={vessel._id} value={vessel._id}>{vessel.name} ({vessel.vesselId})</option>)}
-                </select>
+                </DarkSelect>
             </div>
 
             {(message || error) && (

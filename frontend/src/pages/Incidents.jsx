@@ -1,3 +1,4 @@
+import DarkSelect from "../components/ui/DarkSelect";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -1130,7 +1131,7 @@ const IncidentDetailsModal = ({
                                 </label>
 
                                 <div className="relative">
-                                    <select
+                                    <DarkSelect
                                         value={status}
                                         onChange={(e) =>
                                             setStatus(
@@ -1158,7 +1159,7 @@ const IncidentDetailsModal = ({
                                         <option value="CLOSED">
                                             Closed
                                         </option>
-                                    </select>
+                                    </DarkSelect>
 
                                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
@@ -1172,7 +1173,7 @@ const IncidentDetailsModal = ({
                                 </label>
 
                                 <div className="relative">
-                                    <select
+                                    <DarkSelect
                                         value={priority}
                                         onChange={(e) =>
                                             setPriority(
@@ -1196,7 +1197,7 @@ const IncidentDetailsModal = ({
                                         <option value="URGENT">
                                             Urgent
                                         </option>
-                                    </select>
+                                    </DarkSelect>
 
                                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
@@ -1210,7 +1211,7 @@ const IncidentDetailsModal = ({
                                 </label>
 
                                 <div className="relative">
-                                    <select
+                                    <DarkSelect
                                         value={assignedTo}
                                         onChange={(e) =>
                                             setAssignedTo(
@@ -1232,7 +1233,7 @@ const IncidentDetailsModal = ({
                                                 {user.role}
                                             </option>
                                         ))}
-                                    </select>
+                                    </DarkSelect>
 
                                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
@@ -1425,7 +1426,7 @@ const Select = ({
 }) => {
     return (
         <div className="relative">
-            <select
+            <DarkSelect
                 value={value}
                 onChange={(e) =>
                     onChange(e.target.value)
@@ -1440,7 +1441,7 @@ const Select = ({
                         {label}
                     </option>
                 ))}
-            </select>
+            </DarkSelect>
 
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
         </div>
