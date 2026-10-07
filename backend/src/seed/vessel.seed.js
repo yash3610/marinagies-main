@@ -2,8 +2,9 @@ require("dotenv").config();
 
 const connectDB = require("../config/db");
 const Vessel = require("../models/Vessel");
+const { getDemoNavigation } = require("../services/demoFleetNavigation.service");
 
-const vessels = [
+const vesselDefinitions = [
     {
         name: "MV Samudra",
         vesselId: "VSL-001",
@@ -12,15 +13,7 @@ const vessels = [
         status: "ONLINE",
         riskScore: 18,
         riskLevel: "LOW",
-        latitude: 18.9400,
-        longitude: 72.8350,
         speed: 14.5,
-        heading: 285,
-        destination: "Dubai",
-        route: {
-            origin: "Mumbai",
-            destination: "Dubai",
-        },
         captain: "Rajesh Kumar",
         isActive: true,
     },
@@ -33,15 +26,7 @@ const vessels = [
         status: "ONLINE",
         riskScore: 42,
         riskLevel: "MEDIUM",
-        latitude: 19.0760,
-        longitude: 72.8777,
         speed: 11.2,
-        heading: 270,
-        destination: "Jebel Ali",
-        route: {
-            origin: "Mumbai",
-            destination: "Jebel Ali",
-        },
         captain: "Amit Sharma",
         isActive: true,
     },
@@ -54,15 +39,7 @@ const vessels = [
         status: "WARNING",
         riskScore: 67,
         riskLevel: "HIGH",
-        latitude: 20.5937,
-        longitude: 72.8777,
         speed: 9.8,
-        heading: 255,
-        destination: "Muscat",
-        route: {
-            origin: "Mumbai",
-            destination: "Muscat",
-        },
         captain: "Vikram Singh",
         isActive: true,
     },
@@ -75,15 +52,7 @@ const vessels = [
         status: "OFFLINE",
         riskScore: 76,
         riskLevel: "HIGH",
-        latitude: 21.0000,
-        longitude: 70.0000,
         speed: 0,
-        heading: 180,
-        destination: "Colombo",
-        route: {
-            origin: "Mundra",
-            destination: "Colombo",
-        },
         captain: "Suresh Patil",
         isActive: true,
     },
@@ -96,19 +65,16 @@ const vessels = [
         status: "CRITICAL",
         riskScore: 91,
         riskLevel: "CRITICAL",
-        latitude: 22.5000,
-        longitude: 68.9000,
         speed: 7.4,
-        heading: 310,
-        destination: "Singapore",
-        route: {
-            origin: "Mundra",
-            destination: "Singapore",
-        },
         captain: "Arun Mehta",
         isActive: true,
     },
 ];
+
+const vessels = vesselDefinitions.map((vessel) => ({
+    ...vessel,
+    ...getDemoNavigation(vessel.vesselId),
+}));
 
 const seedVessels = async () => {
     try {

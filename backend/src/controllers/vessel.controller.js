@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Alert = require("../models/Alert");
 const Incident = require("../models/Incident");
 const VesselCurrentState = require("../models/VesselCurrentState");
+const SimulationSession = require("../models/SimulationSession");
 const { vesselScope } = require("../utils/dataScope");
 const { listPorts, planMarineRoute } = require("../services/marineRoute.service");
 
@@ -147,9 +148,10 @@ const createVessel = async (req, res) => {
 // Update vessel
 const updateVessel = async (req, res) => {
     try {
+        const update = withPlannedRoute(req.body);
         const vessel = await Vessel.findOneAndUpdate(
             { _id: req.params.id, ...vesselScope(req, "_id") },
-            withPlannedRoute(req.body),
+            update,
             {
                 new: true,
                 runValidators: true,
@@ -161,6 +163,51 @@ const updateVessel = async (req, res) => {
                 success: false,
                 message: "Vessel not found",
             });
+        }
+
+        // Route edits intentionally reset the displayed/live simulator position
+        // to the selected origin. Without this, stale telemetry can keep an old
+        // vessel marker on land even though its metadata contains a new route.
+        if (update.route?.originPort && update.route?.destinationPort) {
+            const timestamp = new Date();
+            await Promise.all([
+                VesselCurrentState.updateOne(
+                    { vessel: vessel._id },
+                    { $set: {
+                        latitude: update.latitude,
+                        longitude: update.longitude,
+                        heading: update.heading ?? vessel.heading,
+                        "navigationReference.aisLatitude": update.latitude,
+                        "navigationReference.aisLongitude": update.longitude,
+                        "navigationReference.gyroHeading": update.heading ?? vessel.heading,
+                        sourceTimestamp: timestamp,
+                        receivedAt: timestamp,
+                    } }
+                ),
+                SimulationSession.updateOne(
+                    { vessel: vessel._id },
+                    { $set: {
+                        actual: {
+                            latitude: update.latitude,
+                            longitude: update.longitude,
+                            speed: update.speed ?? vessel.speed ?? 0,
+                            heading: update.heading ?? vessel.heading,
+                        },
+                        route: {
+                            origin: { name: update.route.origin, latitude: update.latitude, longitude: update.longitude },
+                            destination: {
+                                name: update.route.destination,
+                                latitude: update.route.destinationLatitude,
+                                longitude: update.route.destinationLongitude,
+                            },
+                            waypoints: update.route.waypoints,
+                            waypointIndex: 0,
+                            distanceNm: update.route.distanceNm,
+                            planner: update.route.planner,
+                        },
+                    } }
+                ),
+            ]);
         }
 
         res.status(200).json({

@@ -16,6 +16,9 @@ import {
     Mail,
     CalendarDays,
     ChevronDown,
+    KeyRound,
+    Ship,
+    Check,
 } from "lucide-react";
 import api from "../services/api";
 
@@ -31,6 +34,7 @@ const Users = () => {
 
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [saving, setSaving] = useState(false);
 
     const [menuUser, setMenuUser] = useState(null);
 
@@ -139,6 +143,7 @@ const Users = () => {
     /* ========================================================= */
 
     const openAddUser = () => {
+        setError("");
         setEditingUser(null);
 
         setForm({
@@ -159,6 +164,7 @@ const Users = () => {
     /* ========================================================= */
 
     const openEditUser = (user) => {
+        setError("");
         setEditingUser(user);
 
         setForm({
@@ -203,6 +209,7 @@ const Users = () => {
         e.preventDefault();
 
         try {
+            setSaving(true);
             setError("");
 
             if (editingUser) {
@@ -239,6 +246,8 @@ const Users = () => {
                 err.response?.data?.message ||
                 "Failed to save user."
             );
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -611,10 +620,13 @@ const Users = () => {
                     form={form}
                     vessels={vessels}
                     onChange={handleChange}
+                    onFormPatch={(patch) => setForm((current) => ({ ...current, ...patch }))}
                     onClose={() =>
                         setShowModal(false)
                     }
                     onSubmit={handleSubmit}
+                    error={error}
+                    saving={saving}
                 />
             )}
         </div>
@@ -990,273 +1002,304 @@ const FilterSelect = ({
 /* USER MODAL */
 /* ========================================================= */
 
+const ROLE_OPTIONS = [
+    { value: "ADMIN", label: "Administrator", description: "Full platform configuration and access" },
+    { value: "SHORE_SECURITY_ANALYST", label: "Shore Security Analyst", description: "Investigate fleet threats and incidents" },
+    { value: "BRIDGE_OFFICER", label: "Bridge Officer", description: "Operate assigned vessel workflows" },
+    { value: "BRIDGE_CREW", label: "Bridge Crew", description: "View assigned vessel operations" },
+    { value: "NETWORK_SECURITY", label: "Network Security", description: "Manage network-defense modules" },
+    { value: "ROC_OPERATOR", label: "ROC Operator", description: "Secure remote operations center access" },
+    { value: "FLEET_MANAGER", label: "Fleet Manager", description: "Manage fleet-wide operational data" },
+    { value: "COMPLIANCE_AUDITOR", label: "Compliance Auditor", description: "Read-only evidence and compliance access" },
+];
+
 const UserModal = ({
     editingUser,
     form,
     vessels,
     onChange,
+    onFormPatch,
     onClose,
     onSubmit,
+    error,
+    saving,
 }) => {
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [vesselSearch, setVesselSearch] = useState("");
+    const closeTimer = useRef(null);
+
+    const requestClose = useCallback(() => {
+        if (saving) return;
+        setDrawerOpen(false);
+        closeTimer.current = window.setTimeout(onClose, 260);
+    }, [onClose, saving]);
+
     useEffect(() => {
-        const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+        const frame = window.requestAnimationFrame(() => setDrawerOpen(true));
+        const closeOnEscape = (event) => { if (event.key === "Escape") requestClose(); };
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = "hidden";
         window.addEventListener("keydown", closeOnEscape);
         return () => {
+            window.cancelAnimationFrame(frame);
+            window.clearTimeout(closeTimer.current);
             document.body.style.overflow = previousOverflow;
             window.removeEventListener("keydown", closeOnEscape);
         };
-    }, [onClose]);
+    }, [requestClose]);
 
-    return (
-        <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-[2000] flex items-end justify-center overflow-y-auto bg-slate-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    const selectedIds = useMemo(
+        () => new Set((form.vesselAccess || []).map(String)),
+        [form.vesselAccess],
+    );
+    const visibleVessels = useMemo(() => {
+        const term = vesselSearch.trim().toLowerCase();
+        if (!term) return vessels;
+        return vessels.filter((vessel) =>
+            vessel.name?.toLowerCase().includes(term)
+            || vessel.vesselId?.toLowerCase().includes(term)
+        );
+    }, [vessels, vesselSearch]);
+    const selectedRole = ROLE_OPTIONS.find((role) => role.value === form.role);
 
-            <div role="dialog" aria-modal="true" aria-label={editingUser ? "Edit user" : "Add user"} className="max-h-[96dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-white/[0.08] bg-[#08111f] shadow-[0_28px_100px_rgba(0,0,0,.72)] sm:max-h-[92dvh] sm:rounded-2xl">
+    const toggleVessel = (vesselId) => {
+        const id = String(vesselId);
+        const next = selectedIds.has(id)
+            ? form.vesselAccess.filter((item) => String(item) !== id)
+            : [...form.vesselAccess, id];
+        onFormPatch({ vesselAccess: next });
+    };
 
-                {/* HEADER */}
-
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.07] bg-[#08111f]/95 px-5 py-4 backdrop-blur-xl">
-                    <div>
-                        <h2 className="text-sm font-semibold text-white">
-                            {editingUser
-                                ? "Edit User"
-                                : "Add New User"}
-                        </h2>
-
-                        <p className="text-[9px] text-slate-600 mt-1">
-                            Configure platform access and permissions
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-lg hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-white transition"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-
-                {/* FORM */}
-
-                <form
-                    onSubmit={onSubmit}
-                    className="p-5 space-y-4"
-                >
-
-                    {/* NAME */}
-
-                    <div>
-                        <label className="block text-[10px] text-slate-500 mb-1.5">
-                            Full Name
-                        </label>
-
-                        <input
-                            name="name"
-                            value={form.name}
-                            onChange={onChange}
-                            required
-                            placeholder="Enter full name"
-                            className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
-                        />
-                    </div>
-
-                    {/* EMAIL */}
-
-                    <div>
-                        <label className="block text-[10px] text-slate-500 mb-1.5">
-                            Email Address
-                        </label>
-
-                        <input
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={onChange}
-                            required
-                            placeholder="user@marine-aegis.local"
-                            className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
-                        />
-                    </div>
-
-                    {/* PASSWORD */}
-
-                    <div>
-                        <label className="block text-[10px] text-slate-500 mb-1.5">
-                            {editingUser
-                                ? "New Password (optional)"
-                                : "Password"}
-                        </label>
-
-                        <input
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={onChange}
-                            required={!editingUser}
-                            minLength={10}
-                            placeholder={
-                                editingUser
-                                    ? "Leave blank to keep current password"
-                                    : "Minimum 10 characters"
-                            }
-                            className="w-full h-10 px-3 rounded-lg border border-slate-800 bg-slate-900 text-xs text-white placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
-                        />
-                    </div>
-
-                    {/* ROLE */}
-
-                    <div>
-                        <label className="block text-[10px] text-slate-500 mb-1.5">
-                            Role
-                        </label>
-
-                        <div className="relative">
-                            <select
-                                name="role"
-                                value={form.role}
-                                onChange={onChange}
-                                className="appearance-none w-full h-10 px-3 pr-9 rounded-lg border border-slate-800 bg-slate-900 text-xs text-slate-300 outline-none focus:border-cyan-500/50"
-                            >
-                                <option value="ADMIN">
-                                    Administrator
-                                </option>
-
-                                <option value="SHORE_SECURITY_ANALYST">
-                                    Shore Security Analyst
-                                </option>
-
-                                <option value="BRIDGE_OFFICER">
-                                    Bridge Officer
-                                </option>
-
-                                <option value="BRIDGE_CREW">
-                                    Bridge Crew
-                                </option>
-
-                                <option value="NETWORK_SECURITY">
-                                    Network Security
-                                </option>
-
-                                <option value="ROC_OPERATOR">
-                                    ROC Operator
-                                </option>
-
-                                <option value="FLEET_MANAGER">
-                                    Fleet Manager
-                                </option>
-
-                                <option value="COMPLIANCE_AUDITOR">
-                                    Compliance Auditor
-                                </option>
-                            </select>
-
-                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
-                        </div>
-                    </div>
-
-                    {/* VESSEL SCOPE */}
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-                        <label className="flex cursor-pointer items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-300">All Vessel Access</p>
-                                <p className="mt-0.5 text-[9px] text-slate-600">
-                                    Allow this user to view every vessel in the fleet
-                                </p>
+    return createPortal(
+        <div
+            role="presentation"
+            onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}
+            className={`fixed inset-0 z-[2000] bg-[#020611]/80 backdrop-blur-[6px] transition-opacity duration-300 ${drawerOpen ? "opacity-100" : "opacity-0"}`}
+        >
+            <aside
+                role="dialog"
+                aria-modal="true"
+                aria-label={editingUser ? "Edit user" : "Add user"}
+                className={`absolute inset-y-0 right-0 flex w-full max-w-[760px] flex-col overflow-hidden border-l border-cyan-400/15 bg-[#07111f] shadow-[-32px_0_90px_rgba(0,0,0,.6)] transition-transform duration-300 ease-out ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}
+            >
+                <header className="relative shrink-0 overflow-hidden border-b border-white/[0.07] px-5 py-5 sm:px-7">
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,rgba(34,211,238,.13),transparent_42%)]" />
+                    <div className="relative flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3.5">
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/20 to-blue-600/10 shadow-[0_0_28px_rgba(34,211,238,.1)]">
+                                {editingUser ? <Edit3 className="h-5 w-5 text-cyan-300" /> : <UserPlus className="h-5 w-5 text-cyan-300" />}
                             </div>
-                            <input
-                                type="checkbox"
-                                name="allVessels"
-                                checked={form.allVessels}
-                                onChange={onChange}
-                                className="accent-cyan-400"
-                            />
-                        </label>
-
-                        {!form.allVessels && (
-                            <div className="mt-3 border-t border-slate-800 pt-3">
-                                <label className="mb-1.5 block text-[10px] text-slate-500">
-                                    Assigned Vessels
-                                </label>
-                                <select
-                                    multiple
-                                    name="vesselAccess"
-                                    value={form.vesselAccess}
-                                    onChange={onChange}
-                                    className="min-h-24 w-full rounded-lg border border-slate-800 bg-slate-950 p-2 text-xs text-slate-300 outline-none focus:border-cyan-500/50"
-                                >
-                                    {vessels.map((vessel) => (
-                                        <option key={vessel._id} value={vessel._id}>
-                                            {vessel.name} ({vessel.vesselId})
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1.5 text-[9px] text-slate-600">
-                                    Hold Ctrl/Cmd to select multiple vessels.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ACTIVE */}
-
-                    <label className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-3 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                            {form.active ? (
-                                <UserCheck className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                                <UserX className="w-4 h-4 text-slate-500" />
-                            )}
-
-                            <div>
-                                <p className="text-[10px] text-slate-300">
-                                    Account Status
-                                </p>
-
-                                <p className="text-[9px] text-slate-600 mt-0.5">
-                                    {form.active
-                                        ? "User can access the platform"
-                                        : "User access is disabled"}
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-medium uppercase tracking-[.22em] text-cyan-400/70">Identity & access</p>
+                                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                                    {editingUser ? "Edit team member" : "Create team member"}
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Configure identity, role and vessel-level access in one place.
                                 </p>
                             </div>
                         </div>
-
-                        <input
-                            type="checkbox"
-                            name="active"
-                            checked={form.active}
-                            onChange={onChange}
-                            className="accent-cyan-400"
-                        />
-                    </label>
-
-                    {/* ACTIONS */}
-
-                    <div className="flex justify-end gap-2 pt-2">
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="px-4 py-2.5 rounded-lg border border-slate-800 text-xs text-slate-400 hover:text-white hover:bg-slate-900 transition"
+                            onClick={requestClose}
+                            disabled={saving}
+                            aria-label="Close"
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-slate-500 transition hover:border-white/[0.15] hover:bg-white/[0.07] hover:text-white disabled:opacity-40"
                         >
-                            Cancel
-                        </button>
-
-                        <button
-                            type="submit"
-                            className="px-4 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-semibold text-slate-950 transition"
-                        >
-                            {editingUser
-                                ? "Update User"
-                                : "Create User"}
+                            <X className="h-4 w-4" />
                         </button>
                     </div>
+                </header>
+
+                <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+                    <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+                        {error && (
+                            <div className="flex items-start gap-3 rounded-2xl border border-red-400/20 bg-red-500/[0.07] px-4 py-3 text-xs text-red-300">
+                                <UserX className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+                            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5 sm:px-5">
+                                <div className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-400/10 text-cyan-300">
+                                    <UsersIcon className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-slate-100">Profile information</h3>
+                                    <p className="text-[10px] text-slate-600">The details used to identify this operator.</p>
+                                </div>
+                            </div>
+                            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+                                <DrawerField label="Full name" icon={UsersIcon}>
+                                    <input name="name" value={form.name} onChange={onChange} required placeholder="e.g. Yash Patil" className="user-drawer-input" />
+                                </DrawerField>
+                                <DrawerField label="Email address" icon={Mail}>
+                                    <input type="email" name="email" value={form.email} onChange={onChange} required placeholder="name@marineaegis.local" className="user-drawer-input" />
+                                </DrawerField>
+                                <div className="sm:col-span-2">
+                                    <DrawerField label={editingUser ? "New password · optional" : "Initial password"} icon={KeyRound}>
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={form.password}
+                                            onChange={onChange}
+                                            required={!editingUser}
+                                            minLength={10}
+                                            autoComplete="new-password"
+                                            placeholder={editingUser ? "Leave empty to retain the current password" : "Use at least 10 characters"}
+                                            className="user-drawer-input"
+                                        />
+                                    </DrawerField>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+                            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3.5 sm:px-5">
+                                <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-400/10 text-indigo-300">
+                                    <Shield className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-slate-100">Role & permissions</h3>
+                                    <p className="text-[10px] text-slate-600">Choose the operator's responsibility level.</p>
+                                </div>
+                            </div>
+                            <div className="p-4 sm:p-5">
+                                <label className="mb-2 block text-[10px] font-medium uppercase tracking-[.14em] text-slate-500">Platform role</label>
+                                <div className="relative">
+                                    <select name="role" value={form.role} onChange={onChange} className="user-drawer-input appearance-none pr-10">
+                                        {ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                                </div>
+                                <div className="mt-3 flex items-start gap-2 rounded-xl border border-indigo-400/10 bg-indigo-400/[0.04] px-3.5 py-3">
+                                    <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-300" />
+                                    <p className="text-[11px] leading-relaxed text-slate-500">{selectedRole?.description}</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025]">
+                            <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] px-4 py-3.5 sm:px-5">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-400/10 text-emerald-300">
+                                        <Ship className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-medium text-slate-100">Fleet scope</h3>
+                                        <p className="text-[10px] text-slate-600">Limit which vessels this user can access.</p>
+                                    </div>
+                                </div>
+                                <span className="shrink-0 rounded-full border border-white/[0.07] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-slate-400">
+                                    {form.allVessels ? "Entire fleet" : `${selectedIds.size} selected`}
+                                </span>
+                            </div>
+
+                            <div className="p-4 sm:p-5">
+                                <button
+                                    type="button"
+                                    onClick={() => onFormPatch({ allVessels: !form.allVessels })}
+                                    className={`flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition ${form.allVessels ? "border-cyan-400/25 bg-cyan-400/[0.07]" : "border-white/[0.07] bg-[#07101d] hover:border-white/[0.12]"}`}
+                                >
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-200">Allow access to all vessels</p>
+                                        <p className="mt-1 text-[10px] text-slate-600">New vessels will be included automatically.</p>
+                                    </div>
+                                    <Toggle enabled={form.allVessels} />
+                                </button>
+
+                                {!form.allVessels && (
+                                    <div className="mt-4">
+                                        <div className="relative">
+                                            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+                                            <input
+                                                value={vesselSearch}
+                                                onChange={(event) => setVesselSearch(event.target.value)}
+                                                placeholder="Search vessel name or ID"
+                                                className="user-drawer-input pl-10"
+                                            />
+                                        </div>
+                                        <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                                            {visibleVessels.map((vessel) => {
+                                                const selected = selectedIds.has(String(vessel._id));
+                                                return (
+                                                    <button
+                                                        key={vessel._id}
+                                                        type="button"
+                                                        onClick={() => toggleVessel(vessel._id)}
+                                                        className={`group flex min-w-0 items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${selected ? "border-cyan-400/30 bg-cyan-400/[0.07]" : "border-white/[0.06] bg-[#07101d] hover:border-white/[0.13] hover:bg-white/[0.03]"}`}
+                                                    >
+                                                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${selected ? "bg-cyan-400/15 text-cyan-300" : "bg-white/[0.04] text-slate-600"}`}>
+                                                            <Ship className="h-4 w-4" />
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-[11px] font-medium text-slate-200">{vessel.name}</span>
+                                                            <span className="mt-0.5 block font-mono text-[9px] text-slate-600">{vessel.vesselId}</span>
+                                                        </span>
+                                                        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${selected ? "border-cyan-300 bg-cyan-300 text-slate-950" : "border-slate-700 bg-slate-950"}`}>
+                                                            {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {!visibleVessels.length && (
+                                            <div className="mt-3 rounded-xl border border-dashed border-white/[0.08] py-8 text-center text-xs text-slate-600">No matching vessels found.</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+                            <button type="button" onClick={() => onFormPatch({ active: !form.active })} className="flex w-full items-center justify-between gap-4 text-left">
+                                <div className="flex items-center gap-3">
+                                    <div className={`grid h-9 w-9 place-items-center rounded-xl ${form.active ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-400/10 text-slate-500"}`}>
+                                        {form.active ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-slate-200">Account enabled</p>
+                                        <p className="mt-1 text-[10px] text-slate-600">{form.active ? "This user can sign in to MarineAegis." : "Sign-in access is currently blocked."}</p>
+                                    </div>
+                                </div>
+                                <Toggle enabled={form.active} />
+                            </button>
+                        </section>
+                    </div>
+
+                    <footer className="shrink-0 border-t border-white/[0.07] bg-[#07111f]/95 px-5 py-4 backdrop-blur-xl sm:px-7">
+                        <div className="flex items-center justify-end gap-3">
+                            <button type="button" onClick={requestClose} disabled={saving} className="h-11 rounded-xl border border-white/[0.09] px-5 text-xs font-medium text-slate-400 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-40">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={saving} className="inline-flex h-11 min-w-36 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 px-5 text-xs font-semibold text-[#031019] shadow-[0_10px_30px_rgba(34,211,238,.16)] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">
+                                {saving ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-900/30 border-t-slate-900" />Saving...</> : editingUser ? "Save changes" : "Create user"}
+                            </button>
+                        </div>
+                    </footer>
                 </form>
-            </div>
-        </div>
+            </aside>
+        </div>,
+        document.body,
     );
 };
+
+const DrawerField = ({ label, icon: Icon, children }) => (
+    <label className="block">
+        <span className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[.14em] text-slate-500">
+            <Icon className="h-3 w-3" />
+            {label}
+        </span>
+        {children}
+    </label>
+);
+
+const Toggle = ({ enabled }) => (
+    <span className={`relative h-6 w-11 shrink-0 rounded-full border transition ${enabled ? "border-cyan-300/40 bg-cyan-400/80" : "border-slate-700 bg-slate-900"}`}>
+        <span className={`absolute top-0.5 h-4.5 w-4.5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-[21px]" : "translate-x-0.5"}`} />
+    </span>
+);
 
 /* ========================================================= */
 /* HELPERS */

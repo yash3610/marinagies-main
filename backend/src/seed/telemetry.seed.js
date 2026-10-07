@@ -5,6 +5,7 @@ const Vessel = require("../models/Vessel");
 const Telemetry = require("../models/Telemetry");
 const VesselCurrentState = require("../models/VesselCurrentState");
 const { ingestTelemetry } = require("../services/telemetry.service");
+const { getDemoNavigation } = require("../services/demoFleetNavigation.service");
 
 dotenv.config();
 
@@ -12,9 +13,6 @@ const telemetryData = [
     {
         vesselId: "VSL-001",
         speed: 14.5,
-        heading: 285,
-        latitude: 18.94,
-        longitude: 72.835,
         depth: 42,
         gpsSignal: 98,
         aisStatus: "ACTIVE",
@@ -25,9 +23,6 @@ const telemetryData = [
     {
         vesselId: "VSL-002",
         speed: 11.2,
-        heading: 270,
-        latitude: 19.076,
-        longitude: 72.8777,
         depth: 38,
         gpsSignal: 95,
         aisStatus: "ACTIVE",
@@ -38,9 +33,6 @@ const telemetryData = [
     {
         vesselId: "VSL-003",
         speed: 9.8,
-        heading: 255,
-        latitude: 20.5937,
-        longitude: 72.8777,
         depth: 31,
         gpsSignal: 81,
         aisStatus: "ANOMALY",
@@ -51,9 +43,6 @@ const telemetryData = [
     {
         vesselId: "VSL-004",
         speed: 0,
-        heading: 180,
-        latitude: 21.0,
-        longitude: 70.0,
         depth: 25,
         gpsSignal: 0,
         aisStatus: "INACTIVE",
@@ -64,9 +53,6 @@ const telemetryData = [
     {
         vesselId: "VSL-005",
         speed: 7.4,
-        heading: 310,
-        latitude: 22.5,
-        longitude: 68.9,
         depth: 29,
         gpsSignal: 54,
         aisStatus: "ANOMALY",
@@ -75,6 +61,11 @@ const telemetryData = [
         fuelLevel: 35,
     },
 ];
+
+const positionedTelemetryData = telemetryData.map((item) => ({
+    ...item,
+    ...getDemoNavigation(item.vesselId),
+}));
 
 const seedTelemetry = async () => {
     try {
@@ -85,7 +76,7 @@ const seedTelemetry = async () => {
         await Telemetry.deleteMany({});
         await VesselCurrentState.deleteMany({});
 
-        for (const item of telemetryData) {
+        for (const item of positionedTelemetryData) {
             const vessel = await Vessel.findOne({
                 vesselId: item.vesselId,
                 isActive: true,

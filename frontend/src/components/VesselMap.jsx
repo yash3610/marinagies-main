@@ -17,6 +17,8 @@ import "leaflet/dist/leaflet.css";
 import api from "../services/api";
 import { createSocket } from "../services/socket";
 
+const NATIVE_POPUP_ENABLED = false;
+
 /* ========================================================= */
 /* MAP CONTROLLER */
 /* ========================================================= */
@@ -505,7 +507,7 @@ const VesselMap = () => {
                                     },
                                 }}
                             >
-                                <Popup>
+                                {NATIVE_POPUP_ENABLED && <Popup>
                                     <div
                                         style={{
                                             minWidth:
@@ -692,7 +694,7 @@ const VesselMap = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </Popup>
+                                </Popup>}
                             </Marker>
                         )
                     )}
