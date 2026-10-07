@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-    Activity, Anchor, Bell, Bot, Boxes, BrainCircuit, ChevronRight, DatabaseBackup,
+    Activity, Bell, Bot, Boxes, BrainCircuit, ChevronRight, DatabaseBackup,
     FileText, Gauge, GitFork, Globe2, LayoutDashboard, LifeBuoy, LogOut, Map,
     RadioTower, Radar, Satellite, ScrollText, Settings, ShieldAlert, Ship, Siren, Users, X,
 } from "lucide-react";
@@ -37,9 +37,10 @@ const ModernDashboardSidebar = ({ open, onClose }) => {
     return <>
         {open && <button type="button" aria-label="Close navigation" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm lg:hidden" />}
         <aside className={`dashboard-sidebar fixed inset-y-0 left-0 z-50 flex w-[17.5rem] shrink-0 flex-col border-r border-white/[0.06] bg-[#07101d]/95 shadow-2xl backdrop-blur-2xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${open ? "translate-x-0" : "-translate-x-full"}`}>
-            <div className="flex h-[4.75rem] items-center gap-3 border-b border-white/[0.06] px-5">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/20 to-blue-500/5 shadow-[0_0_24px_rgba(34,211,238,0.08)]"><Anchor className="h-5 w-5 text-cyan-300" /><span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#07101d] bg-emerald-400" /></div>
-                <div className="min-w-0 flex-1"><h1 className="text-[15px] font-bold tracking-[0.14em] text-white">MARINE<span className="text-cyan-300">AEGIS</span></h1><p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500">Defense platform</p></div>
+            <div className="flex h-[4.75rem] items-center gap-3 border-b border-white/[0.06] px-4">
+                <a href="/" aria-label="MarineAegis home" className="flex min-w-0 flex-1 items-center">
+                    <img src="/assets/img/footer-logo.png" alt="MarineAegis" className="block w-[190px] max-w-full object-contain drop-shadow-[0_7px_22px_rgba(190,242,2,.12)]" />
+                </a>
                 <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-white/5 hover:text-white lg:hidden"><X className="h-4 w-4" /></button>
             </div>
             <nav className="marine-scrollbar flex-1 space-y-6 overflow-y-auto px-3 py-5">

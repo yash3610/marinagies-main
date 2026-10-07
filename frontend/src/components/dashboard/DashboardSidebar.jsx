@@ -1,7 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
     Activity,
-    Anchor,
     Bell,
     Bot,
     Boxes,
@@ -70,16 +69,10 @@ const DashboardSidebar = () => {
 
     return (
         <aside className="w-64 h-screen shrink-0 border-r border-slate-800 bg-[#07111f] flex flex-col">
-            <div className="h-20 px-5 border-b border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center">
-                    <Anchor className="w-5 h-5 text-cyan-400" />
-                </div>
-                <div>
-                    <h1 className="text-lg font-bold tracking-wide text-white">
-                        MARINE<span className="text-cyan-400">AEGIS</span>
-                    </h1>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Cyber Defense</p>
-                </div>
+            <div className="h-20 px-4 border-b border-slate-800 flex items-center">
+                <a href="/" aria-label="MarineAegis home" className="flex min-w-0 items-center">
+                    <img src="/assets/img/footer-logo.png" alt="MarineAegis" className="block w-[190px] max-w-full object-contain drop-shadow-[0_7px_22px_rgba(190,242,2,.12)]" />
+                </a>
             </div>
 
             <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">

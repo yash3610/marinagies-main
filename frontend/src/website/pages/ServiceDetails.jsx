@@ -141,12 +141,12 @@ export default function ServiceDetails() {
                 <input type="text" className="w-100 ht-50 text-para outline-0 border-0" placeholder="Name" />
               </div>
               <div className="form-group mb-10">
-                <select className="w-100 ht-50 text-para outline-0 border-0">
+                <DarkSelect className="w-100 ht-50 text-para outline-0 border-0">
                   <option value={0}>Service Type</option>
                   <option value={1}>Navigation Security</option>
                   <option value={2}>Autonomous Vessels</option>
                   <option value={3}>Threat Intelligence</option>
-                </select>
+                </DarkSelect>
               </div>
               <div className="form-group mb-10">
                 <textarea className="w-100 text-para outline-0 border-0" placeholder="Messages" defaultValue={""} />
@@ -166,3 +166,4 @@ export default function ServiceDetails() {
     </PageLayout>
   );
 }
+import DarkSelect from "../../components/ui/DarkSelect";

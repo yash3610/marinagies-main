@@ -25,12 +25,14 @@ const DarkSelect = ({
     "aria-label": ariaLabel,
 }) => {
     const [open, setOpen] = useState(false);
+    const [internalValue, setInternalValue] = useState();
     const [menuStyle, setMenuStyle] = useState({});
     const triggerRef = useRef(null);
     const menuRef = useRef(null);
     const listboxId = useId();
     const options = useMemo(() => flattenOptions(children), [children]);
-    const selected = options.find((option) => String(option.value) === String(value));
+    const currentValue = value ?? internalValue ?? options.find((option) => !option.disabled)?.value;
+    const selected = options.find((option) => String(option.value) === String(currentValue));
 
     const positionMenu = useCallback(() => {
         const trigger = triggerRef.current;
@@ -68,6 +70,7 @@ const DarkSelect = ({
 
     const choose = (option) => {
         if (option.disabled) return;
+        if (value === undefined) setInternalValue(option.value);
         onChange?.({ target: { name, value: option.value, type: "select-one" } });
         setOpen(false);
         triggerRef.current?.focus();
@@ -85,7 +88,7 @@ const DarkSelect = ({
                 return;
             }
             const enabled = options.filter((option) => !option.disabled);
-            const current = enabled.findIndex((option) => String(option.value) === String(value));
+            const current = enabled.findIndex((option) => String(option.value) === String(currentValue));
             const direction = event.key === "ArrowUp" ? -1 : 1;
             const next = enabled[(current + direction + enabled.length) % enabled.length];
             if (next) choose(next);
@@ -119,7 +122,7 @@ const DarkSelect = ({
                     className="fixed z-[5000] overflow-y-auto rounded-xl border border-cyan-300/15 bg-[#07111f]/[0.98] p-1.5 shadow-[0_22px_70px_rgba(0,0,0,.65)] backdrop-blur-xl"
                 >
                     {options.map((option, index) => {
-                        const active = String(option.value) === String(value);
+                        const active = String(option.value) === String(currentValue);
                         return (
                             <button
                                 key={`${String(option.value)}-${index}`}

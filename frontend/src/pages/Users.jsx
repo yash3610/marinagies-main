@@ -16,7 +16,6 @@ import {
     X,
     Mail,
     CalendarDays,
-    ChevronDown,
     KeyRound,
     Ship,
     Check,
@@ -994,7 +993,6 @@ const FilterSelect = ({
                 ))}
             </DarkSelect>
 
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
         </div>
     );
 };
@@ -1172,7 +1170,6 @@ const UserModal = ({
                                     <DarkSelect name="role" value={form.role} onChange={onChange} className="user-drawer-input appearance-none pr-10">
                                         {ROLE_OPTIONS.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
                                     </DarkSelect>
-                                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
                                 </div>
                                 <div className="mt-3 flex items-start gap-2 rounded-xl border border-indigo-400/10 bg-indigo-400/[0.04] px-3.5 py-3">
                                     <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-300" />

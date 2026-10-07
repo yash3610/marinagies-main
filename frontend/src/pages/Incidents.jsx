@@ -6,7 +6,6 @@ import {
     AlertTriangle,
     BrainCircuit,
     CheckCircle2,
-    ChevronDown,
     Clock3,
     Download,
     Eye,
@@ -1161,7 +1160,6 @@ const IncidentDetailsModal = ({
                                         </option>
                                     </DarkSelect>
 
-                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
                             </div>
 
@@ -1199,7 +1197,6 @@ const IncidentDetailsModal = ({
                                         </option>
                                     </DarkSelect>
 
-                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
                             </div>
 
@@ -1235,7 +1232,6 @@ const IncidentDetailsModal = ({
                                         ))}
                                     </DarkSelect>
 
-                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
                                 </div>
                             </div>
                         </div>
@@ -1443,7 +1439,6 @@ const Select = ({
                 ))}
             </DarkSelect>
 
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
         </div>
     );
 };

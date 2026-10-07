@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Anchor, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Lock, Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
 const Login = () => {
@@ -40,13 +40,9 @@ const Login = () => {
 
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-400/20 mb-4">
-                        <Anchor className="w-8 h-8 text-cyan-400" />
-                    </div>
-
-                    <h1 className="text-3xl font-bold tracking-wider text-white">
-                        MARINE<span className="text-cyan-400">AEGIS</span>
-                    </h1>
+                    <a href="/" aria-label="MarineAegis home" className="mx-auto mb-5 flex w-fit items-center">
+                        <img src="/assets/img/footer-logo.png" alt="MarineAegis" className="block w-[260px] max-w-[76vw] object-contain drop-shadow-[0_10px_32px_rgba(190,242,2,.14)]" />
+                    </a>
 
                     <p className="text-slate-400 mt-2 text-sm">
                         Autonomous Maritime Cyber Defense
