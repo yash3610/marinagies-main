@@ -998,14 +998,25 @@ const UserModal = ({
     onClose,
     onSubmit,
 }) => {
-    return (
-        <div className="fixed inset-0 z-[2000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    useEffect(() => {
+        const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [onClose]);
 
-            <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-950 shadow-2xl">
+    return (
+        <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-[2000] flex items-end justify-center overflow-y-auto bg-slate-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+
+            <div role="dialog" aria-modal="true" aria-label={editingUser ? "Edit user" : "Add user"} className="max-h-[96dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-white/[0.08] bg-[#08111f] shadow-[0_28px_100px_rgba(0,0,0,.72)] sm:max-h-[92dvh] sm:rounded-2xl">
 
                 {/* HEADER */}
 
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.07] bg-[#08111f]/95 px-5 py-4 backdrop-blur-xl">
                     <div>
                         <h2 className="text-sm font-semibold text-white">
                             {editingUser

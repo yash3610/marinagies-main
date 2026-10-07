@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
     AlertTriangle,
     Bell,
@@ -841,16 +842,27 @@ const AlertDetailsModal = ({
     formatDate,
     formatType,
 }) => {
+    useEffect(() => {
+        const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [onClose]);
+
     const severity = getSeverityConfig(
         alert.severity
     );
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
+    return createPortal(
+        <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-[2000] flex items-end justify-center overflow-y-auto bg-slate-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+            <div role="dialog" aria-modal="true" aria-label="Alert details" className="marine-scrollbar max-h-[96dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-white/[0.08] bg-[#08111f] shadow-[0_28px_100px_rgba(0,0,0,.72)] sm:max-h-[90dvh] sm:rounded-2xl">
                 {/* Modal Header */}
 
-                <div className="flex items-start justify-between border-b border-slate-800 p-5">
+                <div className="sticky top-0 z-10 flex items-start justify-between border-b border-white/[0.07] bg-[#08111f]/95 p-5 backdrop-blur-xl">
                     <div className="flex items-start gap-3">
                         <div
                             className={`flex h-11 w-11 items-center justify-center rounded-xl ${severity.bg}`}
@@ -1069,7 +1081,8 @@ const AlertDetailsModal = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

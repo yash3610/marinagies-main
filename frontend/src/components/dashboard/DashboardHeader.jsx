@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bell, CheckCheck, ExternalLink, Menu, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { AlertTriangle, Bell, CheckCheck, ExternalLink, Menu, ShieldCheck, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import api from "../../services/api";
 import { createSocket } from "../../services/socket";
@@ -72,7 +73,6 @@ const DashboardHeader = ({ onMenu }) => {
     const [lastSeen, setLastSeen] = useState(() =>
         Number(localStorage.getItem(NOTIFICATION_SEEN_KEY) || 0)
     );
-    const notificationRef = useRef(null);
 
     useEffect(() => {
         let mounted = true;
@@ -112,23 +112,6 @@ const DashboardHeader = ({ onMenu }) => {
         };
     }, []);
 
-    useEffect(() => {
-        const handleOutsideClick = (event) => {
-            if (!notificationRef.current?.contains(event.target)) setIsOpen(false);
-        };
-        const handleEscape = (event) => {
-            if (event.key === "Escape") setIsOpen(false);
-        };
-
-        document.addEventListener("mousedown", handleOutsideClick);
-        document.addEventListener("keydown", handleEscape);
-
-        return () => {
-            document.removeEventListener("mousedown", handleOutsideClick);
-            document.removeEventListener("keydown", handleEscape);
-        };
-    }, []);
-
     const recentAlerts = useMemo(
         () => [...alerts].sort((a, b) => getAlertTime(b) - getAlertTime(a)).slice(0, 8),
         [alerts]
@@ -155,6 +138,15 @@ const DashboardHeader = ({ onMenu }) => {
         });
     };
 
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape") setIsOpen(false);
+        };
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [isOpen]);
+
     return (
         <header className="relative z-30 flex h-[4.75rem] shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#07101d]/75 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
@@ -175,7 +167,7 @@ const DashboardHeader = ({ onMenu }) => {
                 <div className="hidden h-8 w-px bg-white/[0.06] sm:block" />
                 <div className="hidden text-right xl:block"><p className="text-[11px] font-medium text-slate-300">{user?.name || "Operator"}</p><p className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-600">{String(user?.role || "USER").replaceAll("_", " ")}</p></div>
 
-                <div ref={notificationRef} className="relative">
+                <div className="relative">
                     <button
                         type="button"
                         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
@@ -191,20 +183,22 @@ const DashboardHeader = ({ onMenu }) => {
                         )}
                     </button>
 
-                    {isOpen && (
-                        <div className="absolute right-0 mt-3 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-700/80 bg-[#07111f]/98 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-                            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3.5">
+                    {isOpen && createPortal(<>
+                        <button type="button" aria-label="Close notifications" onClick={() => setIsOpen(false)} className="fixed inset-0 z-[1900] cursor-default bg-slate-950/45 backdrop-blur-[2px]" />
+                        <aside role="dialog" aria-modal="true" aria-label="Notifications" className="fixed inset-x-3 bottom-3 top-3 z-[2000] flex overflow-hidden rounded-2xl border border-cyan-300/10 bg-[#07111f]/98 shadow-[0_28px_100px_rgba(0,0,0,0.7)] backdrop-blur-2xl sm:inset-x-auto sm:right-4 sm:w-[25rem]">
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-4">
                                 <div>
                                     <h3 className="text-sm font-semibold text-white">Notifications</h3>
-                                    <p className="mt-0.5 text-[10px] text-slate-500">Live security alert feed</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Live security feed · {recentAlerts.length} recent</p>
                                 </div>
-                                <button type="button" onClick={markAllRead} className="flex items-center gap-1.5 text-[10px] font-medium text-cyan-400 transition hover:text-cyan-300">
-                                    <CheckCheck className="h-3.5 w-3.5" />
-                                    Mark all read
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button type="button" onClick={markAllRead} className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-medium text-cyan-400 transition hover:bg-cyan-400/[0.07] hover:text-cyan-300"><CheckCheck className="h-3.5 w-3.5" />Mark read</button>
+                                    <button type="button" aria-label="Close" onClick={() => setIsOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/[0.05] hover:text-white"><X className="h-4 w-4" /></button>
+                                </div>
                             </div>
 
-                            <div className="max-h-80 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#0891b2_#07111f] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:border-l [&::-webkit-scrollbar-track]:border-slate-800/70 [&::-webkit-scrollbar-track]:bg-[#07111f] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#07111f] [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-cyan-400 [&::-webkit-scrollbar-thumb]:to-blue-600 hover:[&::-webkit-scrollbar-thumb]:from-cyan-300 hover:[&::-webkit-scrollbar-thumb]:to-blue-500">
+                            <div className="marine-scrollbar flex-1 overflow-y-auto">
                                 {recentAlerts.length ? recentAlerts.map((alert) => (
                                     <Link
                                         key={alert._id}
@@ -237,12 +231,13 @@ const DashboardHeader = ({ onMenu }) => {
                                 )}
                             </div>
 
-                            <Link to="/dashboard/alerts" onClick={() => setIsOpen(false)} className="flex items-center justify-center gap-2 border-t border-slate-800 bg-slate-950/30 px-4 py-3 text-[10px] font-medium text-cyan-400 transition hover:bg-cyan-500/[0.05] hover:text-cyan-300">
+                            <Link to="/dashboard/alerts" onClick={() => setIsOpen(false)} className="flex items-center justify-center gap-2 border-t border-white/[0.07] bg-cyan-400/[0.03] px-4 py-3.5 text-[10px] font-medium text-cyan-300 transition hover:bg-cyan-500/[0.08]">
                                 View all alerts
                                 <ExternalLink className="h-3 w-3" />
                             </Link>
-                        </div>
-                    )}
+                          </div>
+                        </aside>
+                    </>, document.body)}
                 </div>
             </div>
         </header>
