@@ -20,8 +20,10 @@ import { useAuth } from "../hooks/useAuth";
 
 const EMPTY_FORM = {
     name: "", vesselId: "", imoNumber: "", vesselType: "CARGO", status: "OFFLINE",
-    riskScore: "0", riskLevel: "LOW", latitude: "0", longitude: "0", speed: "0",
-    heading: "0", destination: "", captain: "", origin: "", routeDestination: "",
+    riskScore: "0", riskLevel: "LOW", latitude: "18.9", longitude: "72.75", speed: "12",
+    heading: "270", destination: "Jebel Ali / Dubai", captain: "", origin: "Mumbai Port", routeDestination: "Jebel Ali / Dubai",
+    originPort: "MUMBAI", destinationPort: "DUBAI",
+    destinationLatitude: "25.1389", destinationLongitude: "54.8867",
 };
 
 const VESSEL_TYPES = ["CONTAINER", "TANKER", "CARGO", "BULK_CARRIER", "PASSENGER", "OTHER"];
@@ -41,6 +43,7 @@ const FleetOverview = () => {
     const [formError, setFormError] = useState("");
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState("");
+    const [ports, setPorts] = useState([]);
 
     useEffect(() => {
         const fetchVessels = async () => {
@@ -63,6 +66,12 @@ const FleetOverview = () => {
         };
 
         fetchVessels();
+    }, []);
+
+    useEffect(() => {
+        api.get("/vessels/marine-route/ports")
+            .then((response) => setPorts(response.data?.ports || []))
+            .catch(() => setPorts([]));
     }, []);
 
     const totalVessels = vessels.length;
@@ -102,6 +111,9 @@ const FleetOverview = () => {
             speed: String(vessel.speed ?? 0), heading: String(vessel.heading ?? 0),
             destination: vessel.destination || "", captain: vessel.captain || "",
             origin: vessel.route?.origin || "", routeDestination: vessel.route?.destination || "",
+            originPort: vessel.route?.originPort || "MUMBAI", destinationPort: vessel.route?.destinationPort || "DUBAI",
+            destinationLatitude: String(vessel.route?.destinationLatitude ?? 25.1389),
+            destinationLongitude: String(vessel.route?.destinationLongitude ?? 54.8867),
         });
         setFormError("");
         setEditing(vessel);
@@ -109,6 +121,15 @@ const FleetOverview = () => {
 
     const handleField = (event) => {
         const { name, value } = event.target;
+        if (name === "originPort" || name === "destinationPort") {
+            const port = ports.find((item) => item.key === value);
+            if (port) {
+                setForm((current) => name === "originPort"
+                    ? { ...current, originPort: value, origin: port.name, latitude: String(port.latitude), longitude: String(port.longitude) }
+                    : { ...current, destinationPort: value, routeDestination: port.name, destination: port.name, destinationLatitude: String(port.latitude), destinationLongitude: String(port.longitude) });
+                return;
+            }
+        }
         setForm((current) => ({ ...current, [name]: name === "vesselId" ? value.toUpperCase() : value }));
     };
 
@@ -124,10 +145,18 @@ const FleetOverview = () => {
             vesselType: form.vesselType, status: form.status, riskScore: Number(form.riskScore),
             riskLevel: form.riskLevel, latitude: Number(form.latitude), longitude: Number(form.longitude),
             speed: Number(form.speed), heading: Number(form.heading), destination: form.destination.trim(),
-            captain: form.captain.trim(), route: { origin: form.origin.trim(), destination: form.routeDestination.trim() },
+            captain: form.captain.trim(), route: {
+                origin: form.origin.trim(), destination: form.routeDestination.trim(),
+                originPort: form.originPort, destinationPort: form.destinationPort,
+                destinationLatitude: Number(form.destinationLatitude),
+                destinationLongitude: Number(form.destinationLongitude),
+            },
         };
-        if (payload.riskScore < 0 || payload.riskScore > 100 || payload.heading < 0 || payload.heading > 360) {
-            setFormError("Risk score must be 0–100 and heading must be 0–360 degrees.");
+        if (payload.riskScore < 0 || payload.riskScore > 100 || payload.heading < 0 || payload.heading > 360
+            || payload.latitude < -90 || payload.latitude > 90 || payload.longitude < -180 || payload.longitude > 180
+            || payload.route.destinationLatitude < -90 || payload.route.destinationLatitude > 90
+            || payload.route.destinationLongitude < -180 || payload.route.destinationLongitude > 180) {
+            setFormError("Check risk, heading and coordinate ranges before saving.");
             return;
         }
         try {
@@ -511,7 +540,7 @@ const FleetOverview = () => {
 
             </div>
 
-            {editing !== undefined && <VesselModal form={form} editing={editing} busy={busy} error={formError} onChange={handleField} onClose={() => !busy && setEditing(undefined)} onSubmit={saveVessel} />}
+            {editing !== undefined && <VesselModal form={form} ports={ports} editing={editing} busy={busy} error={formError} onChange={handleField} onClose={() => !busy && setEditing(undefined)} onSubmit={saveVessel} />}
             {deleting && <DeleteVesselModal vessel={deleting} busy={busy} onClose={() => !busy && setDeleting(null)} onConfirm={removeVessel} />}
         </div>
     );
@@ -555,18 +584,20 @@ const FormSelect = ({ label, options, name, value, onChange }) => {
     return <div ref={rootRef} className="relative">
         <span className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
         <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)} className={`flex h-10 w-full items-center justify-between rounded-lg border bg-slate-950 px-3 text-left text-xs text-slate-200 outline-none transition ${open ? "border-cyan-400/45 ring-2 ring-cyan-400/[0.07]" : "border-slate-800 hover:border-slate-700"}`}>
-            <span>{value.replaceAll("_", " ")}</span><ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${open ? "rotate-180 text-cyan-300" : ""}`} />
+            <span>{(options.find((option) => (typeof option === "string" ? option : option.value) === value)?.label || value).replaceAll("_", " ")}</span><ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${open ? "rotate-180 text-cyan-300" : ""}`} />
         </button>
         {open && <div role="listbox" className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-xl border border-white/[0.09] bg-[#07111f] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,.6)]">
             {options.map((option) => {
-                const selected = option === value;
-                return <button key={option} type="button" role="option" aria-selected={selected} onClick={() => { onChange({ target: { name, value: option } }); setOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition ${selected ? "bg-cyan-400/10 text-cyan-200" : "text-slate-300 hover:bg-white/[0.05] hover:text-white"}`}><span>{option.replaceAll("_", " ")}</span>{selected && <Check className="h-3.5 w-3.5 text-cyan-300" />}</button>;
+                const optionValue = typeof option === "string" ? option : option.value;
+                const optionLabel = typeof option === "string" ? option.replaceAll("_", " ") : option.label;
+                const selected = optionValue === value;
+                return <button key={optionValue} type="button" role="option" aria-selected={selected} onClick={() => { onChange({ target: { name, value: optionValue } }); setOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition ${selected ? "bg-cyan-400/10 text-cyan-200" : "text-slate-300 hover:bg-white/[0.05] hover:text-white"}`}><span>{optionLabel}</span>{selected && <Check className="h-3.5 w-3.5 text-cyan-300" />}</button>;
             })}
         </div>}
     </div>;
 };
 
-const VesselModal = ({ form, editing, busy, error, onChange, onClose, onSubmit }) => {
+const VesselModal = ({ form, ports, editing, busy, error, onChange, onClose, onSubmit }) => {
     const [closing, setClosing] = useState(false);
     const requestClose = useCallback(() => {
         if (busy || closing) return;
@@ -589,7 +620,6 @@ const VesselModal = ({ form, editing, busy, error, onChange, onClose, onSubmit }
                         <FormField label="IMO number" required name="imoNumber" value={form.imoNumber} onChange={onChange} placeholder="9876543" />
                         <FormSelect label="Vessel type" name="vesselType" value={form.vesselType} onChange={onChange} options={VESSEL_TYPES} />
                         <FormField label="Captain" name="captain" value={form.captain} onChange={onChange} placeholder="Captain name" />
-                        <FormField label="Destination" name="destination" value={form.destination} onChange={onChange} placeholder="Colombo" />
                     </div></section>
                     <section><h3 className="mb-3 text-xs font-semibold text-slate-200">Operational state</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <FormSelect label="Status" name="status" value={form.status} onChange={onChange} options={VESSEL_STATUSES} />
@@ -597,12 +627,14 @@ const VesselModal = ({ form, editing, busy, error, onChange, onClose, onSubmit }
                         <FormSelect label="Risk level" name="riskLevel" value={form.riskLevel} onChange={onChange} options={RISK_LEVELS} />
                         <FormField label="Speed (kn)" type="number" min="0" step="0.1" name="speed" value={form.speed} onChange={onChange} />
                     </div></section>
-                    <section><h3 className="mb-3 text-xs font-semibold text-slate-200">Navigation</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <FormField label="Latitude" type="number" min="-90" max="90" step="any" name="latitude" value={form.latitude} onChange={onChange} />
-                        <FormField label="Longitude" type="number" min="-180" max="180" step="any" name="longitude" value={form.longitude} onChange={onChange} />
+                    <section><div className="mb-3"><h3 className="text-xs font-semibold text-slate-200">Marine route planner</h3><p className="mt-1 text-[10px] text-slate-500">Choose ports to fill verified approach coordinates automatically. MarineAegis generates sea-corridor waypoints between them.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <FormSelect label="Origin port" name="originPort" value={form.originPort} onChange={onChange} options={ports.map((port) => ({ value: port.key, label: port.name }))} />
+                        <FormSelect label="Destination port" name="destinationPort" value={form.destinationPort} onChange={onChange} options={ports.map((port) => ({ value: port.key, label: port.name }))} />
+                        <FormField label="Start latitude" readOnly type="number" name="latitude" value={form.latitude} onChange={onChange} />
+                        <FormField label="Start longitude" readOnly type="number" name="longitude" value={form.longitude} onChange={onChange} />
                         <FormField label="Heading" type="number" min="0" max="360" step="0.1" name="heading" value={form.heading} onChange={onChange} />
-                        <FormField label="Route origin" name="origin" value={form.origin} onChange={onChange} placeholder="Mumbai" />
-                        <FormField label="Route destination" name="routeDestination" value={form.routeDestination} onChange={onChange} placeholder="Dubai" />
+                        <FormField label="Destination latitude" readOnly type="number" name="destinationLatitude" value={form.destinationLatitude} onChange={onChange} />
+                        <FormField label="Destination longitude" readOnly type="number" name="destinationLongitude" value={form.destinationLongitude} onChange={onChange} />
                     </div></section>
                     <div className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-white/[0.07] bg-[#08111f]/95 px-5 py-4 backdrop-blur-xl">
                         <button type="button" disabled={busy} onClick={requestClose} className="rounded-lg border border-slate-700 px-4 py-2.5 text-xs text-slate-400">Cancel</button>

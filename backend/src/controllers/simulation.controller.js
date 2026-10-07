@@ -70,8 +70,8 @@ const startVoyage = async (req, res) => {
         const longitude = Number(req.body.longitude ?? current?.longitude ?? vessel.longitude);
         const speed = Number(req.body.speed ?? current?.speed ?? vessel.speed ?? 10) || 10;
         const heading = Number(req.body.heading ?? current?.heading ?? vessel.heading ?? 90);
-        const destinationLatitude = Number(req.body.destinationLatitude ?? 25.276987);
-        const destinationLongitude = Number(req.body.destinationLongitude ?? 55.296249);
+        const destinationLatitude = Number(req.body.destinationLatitude ?? vessel.route?.destinationLatitude ?? 25.276987);
+        const destinationLongitude = Number(req.body.destinationLongitude ?? vessel.route?.destinationLongitude ?? 55.296249);
         if (![latitude, longitude, speed, heading, destinationLatitude, destinationLongitude].every(Number.isFinite)) {
             return res.status(400).json({ success: false, message: "Voyage coordinates, speed and heading must be valid numbers" });
         }
@@ -89,6 +89,10 @@ const startVoyage = async (req, res) => {
                             latitude: destinationLatitude,
                             longitude: destinationLongitude,
                         },
+                        waypoints: vessel.route?.waypoints || [],
+                        waypointIndex: 0,
+                        distanceNm: vessel.route?.distanceNm || 0,
+                        planner: vessel.route?.planner || "DIRECT",
                     },
                     attack: { type: "NONE", active: false, offsetLatitude: 0, offsetLongitude: 0, injectedAt: null },
                     hardware: { greenLed: true, redLed: false, buzzer: false },

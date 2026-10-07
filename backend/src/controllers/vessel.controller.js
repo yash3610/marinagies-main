@@ -4,6 +4,34 @@ const Alert = require("../models/Alert");
 const Incident = require("../models/Incident");
 const VesselCurrentState = require("../models/VesselCurrentState");
 const { vesselScope } = require("../utils/dataScope");
+const { listPorts, planMarineRoute } = require("../services/marineRoute.service");
+
+const withPlannedRoute = (body) => {
+    const next = { ...body, route: { ...(body.route || {}) } };
+    const { originPort, destinationPort } = next.route;
+    if (!originPort || !destinationPort) return next;
+    const plan = planMarineRoute(originPort, destinationPort);
+    next.latitude = plan.origin.latitude;
+    next.longitude = plan.origin.longitude;
+    next.destination = plan.destination.name;
+    next.route = {
+        ...next.route,
+        origin: plan.origin.name,
+        destination: plan.destination.name,
+        destinationLatitude: plan.destination.latitude,
+        destinationLongitude: plan.destination.longitude,
+        waypoints: plan.waypoints,
+        distanceNm: plan.distanceNm,
+        planner: plan.planner,
+    };
+    return next;
+};
+
+const getMarinePorts = (req, res) => res.json({ success: true, ports: listPorts() });
+const previewMarineRoute = (req, res) => {
+    try { res.json({ success: true, route: planMarineRoute(req.body.originPort, req.body.destinationPort) }); }
+    catch (error) { res.status(error.status || 400).json({ success: false, message: error.message }); }
+};
 
 // Get all vessels
 const getVessels = async (req, res) => {
@@ -91,7 +119,7 @@ const getVesselStatus = async (req, res) => {
 // Create vessel
 const createVessel = async (req, res) => {
     try {
-        const vessel = await Vessel.create(req.body);
+        const vessel = await Vessel.create(withPlannedRoute(req.body));
         if (!req.user.allVessels) {
             await User.updateOne(
                 { _id: req.user.userId },
@@ -121,7 +149,7 @@ const updateVessel = async (req, res) => {
     try {
         const vessel = await Vessel.findOneAndUpdate(
             { _id: req.params.id, ...vesselScope(req, "_id") },
-            req.body,
+            withPlannedRoute(req.body),
             {
                 new: true,
                 runValidators: true,
@@ -187,4 +215,6 @@ module.exports = {
     createVessel,
     updateVessel,
     deleteVessel,
+    getMarinePorts,
+    previewMarineRoute,
 };

@@ -1047,6 +1047,7 @@ const NavigationMap = () => {
                         <Polyline
                             positions={[
                                 [selectedSession.route.origin.latitude, selectedSession.route.origin.longitude],
+                                ...(selectedSession.route.waypoints || []).map((point) => [point.latitude, point.longitude]),
                                 [selectedSession.route.destination.latitude, selectedSession.route.destination.longitude],
                             ]}
                             pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "8 8", opacity: 0.75 }}

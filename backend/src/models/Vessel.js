@@ -84,6 +84,8 @@ const vesselSchema = new mongoose.Schema(
         },
 
         route: {
+            originPort: { type: String, trim: true, default: "" },
+            destinationPort: { type: String, trim: true, default: "" },
             origin: {
                 type: String,
                 default: "",
@@ -92,6 +94,25 @@ const vesselSchema = new mongoose.Schema(
                 type: String,
                 default: "",
             },
+            destinationLatitude: {
+                type: Number,
+                min: -90,
+                max: 90,
+                default: null,
+            },
+            destinationLongitude: {
+                type: Number,
+                min: -180,
+                max: 180,
+                default: null,
+            },
+            waypoints: [{
+                name: { type: String, trim: true },
+                latitude: { type: Number, min: -90, max: 90, required: true },
+                longitude: { type: Number, min: -180, max: 180, required: true },
+            }],
+            distanceNm: { type: Number, min: 0, default: 0 },
+            planner: { type: String, default: "" },
         },
 
         captain: {

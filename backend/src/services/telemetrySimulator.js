@@ -26,6 +26,16 @@ const bearingTo = (from, to) => {
     ) * 180 / Math.PI + 360) % 360;
 };
 
+const distanceMetersBetween = (from, to) => {
+    const radians = (value) => value * Math.PI / 180;
+    const dLat = radians(to.latitude - from.latitude);
+    const dLon = radians(to.longitude - from.longitude);
+    const lat1 = radians(from.latitude);
+    const lat2 = radians(to.latitude);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+};
+
 const simulateTelemetry = async (io) => {
     if (simulationRunning) return;
     simulationRunning = true;
@@ -42,8 +52,16 @@ const simulateTelemetry = async (io) => {
             const timestamp = new Date();
             const elapsedSeconds = clamp((timestamp - new Date(session.lastTickAt || timestamp)) / 1000 || 3, 1, 10);
             const speed = clamp(randomChange(session.actual.speed || 10, 0.2), 1, 25);
-            const destination = session.route?.destination;
-            const heading = destination?.latitude !== undefined && destination?.longitude !== undefined
+            const targets = [...(session.route?.waypoints || []), session.route?.destination].filter((item) =>
+                item?.latitude !== undefined && item?.longitude !== undefined
+            );
+            let waypointIndex = Math.min(session.route?.waypointIndex || 0, Math.max(targets.length - 1, 0));
+            let destination = targets[waypointIndex];
+            if (destination && distanceMetersBetween(session.actual, destination) < 250 && waypointIndex < targets.length - 1) {
+                waypointIndex += 1;
+                destination = targets[waypointIndex];
+            }
+            const heading = destination
                 ? bearingTo(session.actual, destination)
                 : session.actual.heading;
             const headingRad = (heading * Math.PI) / 180;
@@ -108,6 +126,7 @@ const simulateTelemetry = async (io) => {
                 {
                     $set: {
                         actual: { latitude: actualLatitude, longitude: actualLongitude, speed, heading },
+                        "route.waypointIndex": waypointIndex,
                         hardware,
                         lastTickAt: timestamp,
                     },

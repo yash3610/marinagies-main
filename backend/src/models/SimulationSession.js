@@ -20,6 +20,14 @@ const simulationSessionSchema = new mongoose.Schema({
             latitude: { type: Number, min: -90, max: 90, default: 25.276987 },
             longitude: { type: Number, min: -180, max: 180, default: 55.296249 },
         },
+        waypoints: [{
+            name: { type: String, trim: true },
+            latitude: { type: Number, min: -90, max: 90, required: true },
+            longitude: { type: Number, min: -180, max: 180, required: true },
+        }],
+        waypointIndex: { type: Number, min: 0, default: 0 },
+        distanceNm: { type: Number, min: 0, default: 0 },
+        planner: { type: String, default: "" },
     },
     attack: {
         type: { type: String, enum: ["NONE", "GPS_SPOOFING"], default: "NONE" },
