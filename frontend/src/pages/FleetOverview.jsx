@@ -500,7 +500,7 @@ const FleetOverview = () => {
                                     {/* Speed */}
                                     <td className="px-5 py-4">
                                         <span className="text-xs text-slate-300">
-                                            {vessel.speed} kn
+                                            {Number.isFinite(Number(vessel.speed)) ? Number(vessel.speed).toFixed(1) : "0.0"} kn
                                         </span>
                                     </td>
 

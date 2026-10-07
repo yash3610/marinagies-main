@@ -724,6 +724,12 @@ const AlertCompact = ({ alert }) => {
 const TelemetryCompact = ({ item }) => {
     const vessel = item?.vessel;
     const data = item?.telemetry || {};
+    const formatNumber = (value, decimals = 1) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? number.toFixed(decimals) : "0.0";
+    };
+    const formatPercent = (value) =>
+        `${formatNumber(Math.min(100, Math.max(0, Number(value) || 0)), 1)}%`;
 
     return (
         <div className="px-3 py-3">
@@ -760,7 +766,7 @@ const TelemetryCompact = ({ item }) => {
                 <TelemetryMini
                     icon={Gauge}
                     label="Speed"
-                    value={`${data?.speed ?? 0} kn`}
+                    value={`${formatNumber(data?.speed)} kn`}
                 />
 
                 <TelemetryMini
@@ -772,13 +778,13 @@ const TelemetryCompact = ({ item }) => {
                 <TelemetryMini
                     icon={MapPin}
                     label="GPS"
-                    value={`${data?.gpsSignal ?? 0}%`}
+                    value={formatPercent(data?.gpsSignal)}
                 />
 
                 <TelemetryMini
                     icon={Fuel}
                     label="Fuel"
-                    value={`${data?.fuelLevel ?? 0}%`}
+                    value={formatPercent(data?.fuelLevel)}
                 />
             </div>
         </div>
